@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: auth_app_backend
+
+# Spring profiles active to use application-dev.yaml
+  profiles:
+    active: dev
