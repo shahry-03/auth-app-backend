@@ -1,6 +1,8 @@
 package com.auth_app_backend.services.impl;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
 import com.auth_app_backend.dtos.UserDto;
 import com.auth_app_backend.services.AuthService;
 import com.auth_app_backend.services.UserService;
@@ -9,16 +11,16 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class AuthServiceImpl implements AuthService{
+public class AuthServiceImpl implements AuthService {
     private final UserService userService;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public UserDto registerUser(UserDto userDto) {
         // Here you can add additional logic for registration,
-        //  such as checking if the user already exists, hashing the password, etc.  
-        UserDto userdto = userService.createUser(userDto);
-        return userdto;
+        // such as checking if the user already exists, hashing the password, etc.
+        userDto.setPassword(passwordEncoder.encode(userDto.getPassword()));
+        return userService.createUser(userDto);
     }
-
 
 }
