@@ -167,6 +167,12 @@ public class JwtService {
         }
     }
 
+    // Get User ID from token
+    public UUID getUserId(String token) {
+        Claims claims = parseToken(token).getPayload();
+        return UUID.fromString(claims.getSubject());
+    }
+
     // Validate the token (e.g., check expiration, signature)
     public boolean validateToken(String token) {
         try {
