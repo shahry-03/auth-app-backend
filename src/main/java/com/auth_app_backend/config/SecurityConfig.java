@@ -2,13 +2,13 @@ package com.auth_app_backend.config;
 
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 // import org.springframework.security.core.userdetails.User;
 // import org.springframework.security.core.userdetails.User.UserBuilder;
@@ -18,6 +18,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import com.auth_app_backend.security.JwtAuthenticationFilter;
@@ -27,8 +28,14 @@ import tools.jackson.databind.ObjectMapper;
 @Configuration
 public class SecurityConfig {
 
-        @Autowired
         private JwtAuthenticationFilter jwtAuthenticationFilter;
+        private AuthenticationSuccessHandler authenticationSuccessHandler;
+
+        public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                        AuthenticationSuccessHandler authenticationSuccessHandler) {
+                this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+                this.authenticationSuccessHandler = authenticationSuccessHandler;
+        }
 
         @Bean
         public SecurityFilterChain SecurityFilterChain(HttpSecurity http) throws Exception {
@@ -42,6 +49,11 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/v1/auth/refresh").permitAll()
                                                 .requestMatchers("/api/v1/auth/logout").permitAll()
                                                 .anyRequest().authenticated())
+                                .oauth2Login(oauth2 -> oauth2.successHandler(authenticationSuccessHandler)
+                                                .failureHandler(null)
+
+                                )
+                                .logout(AbstractHttpConfigurer::disable)
                                 .exceptionHandling(ex -> ex
                                                 .authenticationEntryPoint((request, response, authException) -> {
                                                         // Error Message

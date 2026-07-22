@@ -37,3 +37,6 @@ build/
 src/main/resources/application-dev.yaml
 src/main/resources/application-qa.yaml
 src/main/resources/application-prod.yaml
+
+# Ignore .env file 
+.env
