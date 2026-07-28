@@ -23,7 +23,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 import com.auth_app_backend.security.JwtAuthenticationFilter;
 
-import tools.jackson.databind.ObjectMapper;
+// import tools.jackson.databind.ObjectMapper; // for spring boot version 4.x
+import com.fasterxml.jackson.databind.ObjectMapper; // for spring boot version 3.x
 
 @Configuration
 public class SecurityConfig {
@@ -44,12 +45,11 @@ public class SecurityConfig {
                                 .cors(Customizer.withDefaults())
                                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                                 .authorizeHttpRequests(auth -> auth
-                                                .requestMatchers("/api/v1/auth/register").permitAll()
-                                                .requestMatchers("/api/v1/auth/login").permitAll()
-                                                .requestMatchers("/api/v1/auth/refresh").permitAll()
-                                                .requestMatchers("/api/v1/auth/logout").permitAll()
+                                                .requestMatchers(AppConstants.AUTH_PUBLIC_URLS)
+                                                .permitAll()
                                                 .anyRequest().authenticated())
-                                .oauth2Login(oauth2 -> oauth2.successHandler(authenticationSuccessHandler)
+                                .oauth2Login(oauth2 -> oauth2
+                                                .successHandler(authenticationSuccessHandler)
                                                 .failureHandler(null)
 
                                 )
@@ -87,7 +87,7 @@ public class SecurityConfig {
         }
 
         @Bean
-        public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) {
+        public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
                 return configuration.getAuthenticationManager();
         }
 

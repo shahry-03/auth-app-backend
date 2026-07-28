@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -33,6 +34,9 @@ public class Oauth2SuccessHandler implements AuthenticationSuccessHandler {
     private final CookieService cookieService;
     private final RefreshTokenRepository refreshTokenRepository;
 
+    @Value("${app.auth.frontend.success-redirect}")
+    private String frontEndSuccessUrl;
+
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
             Authentication authentication) throws IOException, ServletException {
@@ -58,26 +62,41 @@ public class Oauth2SuccessHandler implements AuthenticationSuccessHandler {
                 String email = oauth2User.getAttributes().getOrDefault("email", "").toString();
                 String name = oauth2User.getAttributes().getOrDefault("name", "").toString();
                 String picture = oauth2User.getAttributes().getOrDefault("picture", "").toString();
-                user = User.builder()
+                User newUser = User.builder()
                         .email(email)
                         .name(name)
                         .image(picture)
                         .provider(Provider.GOOGLE)
+                        .providerId(googleId)
                         .build();
 
-                userRepository.findByEmail(email).ifPresentOrElse(user1 -> {
-                    logger.info("User is there in the database");
-                    logger.info(user1.toString());
-                }, () -> {
-                    userRepository.save(user);
-                });
+                user = userRepository.findByEmail(email).orElseGet(() -> userRepository.save(newUser));
             }
-            case "facebook" -> {
-                // Handle Facebook authentication
+            case "github" -> {
+                // Handle GitHub authentication
+                String githubId = oauth2User.getAttributes().getOrDefault("id", "").toString();
+                String name = oauth2User.getAttributes().getOrDefault("login", "").toString();
+                String email = oauth2User.getAttributes().getOrDefault("email", "").toString();
+                if (email == null || email.isEmpty()) {
+                    // If email is not provided, you might want to fetch it from another endpoint or
+                    // handle it accordingly
+                    email = name + "@github.com"; // Placeholder email if GitHub doesn't provide one
+
+                }
+                String picture = oauth2User.getAttributes().getOrDefault("avatar_url", "").toString();
+                User newUser = User.builder()
+                        .email(email)
+                        .name(name)
+                        .image(picture)
+                        .provider(Provider.GITHUB)
+                        .providerId(githubId)
+                        .build();
+                user = userRepository.findByEmail(email).orElseGet(() -> userRepository.save(newUser));
             }
             default -> {
-                // Handle unknown authentication provider
-                throw new RuntimeException("Invalid Registration ID: ");
+                // Handle unknown provider
+                throw new IllegalArgumentException("Unknown provider: " + registrationId);
+
             }
         }
 
@@ -99,7 +118,9 @@ public class Oauth2SuccessHandler implements AuthenticationSuccessHandler {
         cookieService.attachRefreshCookie(response, refreshTokenString,
                 (int) jwtService.getRefreshExpirationInMillis());
 
-        response.getWriter().write("Login Successful");
+        // response.getWriter().write("Login Successful");
+
+        response.sendRedirect(frontEndSuccessUrl);
 
     }
 
