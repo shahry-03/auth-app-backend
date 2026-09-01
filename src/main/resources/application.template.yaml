@@ -1,11 +1,12 @@
 # Instructions: Copy this file, rename it to 'application-dev.yaml', 
-# and replace the dummy values with your actual database credentials.
+# and replace the dummy values with your actual credentials and configuration.
 
 spring:
   datasource:
-    url: jdbc:mysql://<YOUR_DB_HOST>:<PORT>/<DB_NAME>
+    url: jdbc:mysql://<YOUR_DB_HOST>:<PORT>/<DB_NAME>?ssl-mode=REQUIRED
     username: <YOUR_USERNAME>
     password: <YOUR_PASSWORD>
+    driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
       ddl-auto: update
@@ -13,8 +14,44 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
-      show-sql: true
+    show-sql: true
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: <YOUR_GOOGLE_CLIENT_ID>
+            client-secret: <YOUR_GOOGLE_CLIENT_SECRET>
+            scope:
+              - email
+              - profile
 
 # server configuration
 server:
   port: 8080
+
+# JWT Configuration
+security:
+  jwt:
+    secret: <YOUR_JWT_SECRET_KEY_BASE64_ENCODED>
+    issuer: auth-app-backend
+    expiration: 86400000
+    expiration-time: 86400000
+    refresh-token-expiration: 604800000 # 7 days
+    refresh-token-cookie-name: refreshToken
+    cookie-name: accessToken
+    cookie-secure: false # set to true in production
+    cookie-http-only: true
+    cookie-same-site: Lax
+    cookie-domain: localhost
+
+# Application specific configuration
+app:
+  auth:
+    frontend:
+      success-redirect: http://localhost:3000/oauth2/redirect
+      failure-redirect: http://localhost:3000/login?error=true
+  oauth2:
+    authorized-redirect-uris:
+      - http://localhost:3000/oauth2/redirect
