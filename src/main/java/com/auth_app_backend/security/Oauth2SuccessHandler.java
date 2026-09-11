@@ -22,20 +22,26 @@ import com.auth_app_backend.repositories.UserRepository;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
+import com.auth_app_backend.config.UniversalAuthProperties;
 
 @Component
-@RequiredArgsConstructor
 public class Oauth2SuccessHandler implements AuthenticationSuccessHandler {
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private final UserRepository userRepository;
     private final JwtService jwtService;
-    private final CookieService cookieService;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final String frontendSuccessRedirect;
+    private final CookieService cookieService;
 
-    @Value("${app.auth.frontend.success-redirect}")
-    private String frontEndSuccessUrl;
+    public Oauth2SuccessHandler(UserRepository userRepository, JwtService jwtService,
+            RefreshTokenRepository refreshTokenRepository, UniversalAuthProperties properties, CookieService cookieService) {
+        this.userRepository = userRepository;
+        this.jwtService = jwtService;
+        this.refreshTokenRepository = refreshTokenRepository;
+        this.frontendSuccessRedirect = properties.getFrontend().getSuccessRedirect();
+        this.cookieService = cookieService;
+    }
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
@@ -120,7 +126,7 @@ public class Oauth2SuccessHandler implements AuthenticationSuccessHandler {
 
         // response.getWriter().write("Login Successful");
 
-        response.sendRedirect(frontEndSuccessUrl);
+        response.sendRedirect(frontendSuccessRedirect);
 
     }
 

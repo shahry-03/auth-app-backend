@@ -1,12 +1,12 @@
 package com.auth_app_backend.security;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
 
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.Getter;
+import com.auth_app_backend.config.UniversalAuthProperties;
 
 @Service
 @Getter
@@ -18,17 +18,12 @@ public class CookieService {
     private final String cookieDomain;
     private final String cookieSameSite;
 
-    public CookieService(
-            @Value("${security.jwt.refresh-token-cookie-name}") String refreshTokenCookieName,
-            @Value("${security.jwt.cookie-secure}") boolean cookieSecure,
-            @Value("${security.jwt.cookie-http-only}") boolean cookieHttpOnly,
-            @Value("${security.jwt.cookie-domain}") String cookieDomain,
-            @Value("${security.jwt.cookie-same-site}") String cookieSameSite) {
-        this.refreshTokenCookieName = refreshTokenCookieName;
-        this.cookieSecure = cookieSecure;
-        this.cookieHttpOnly = cookieHttpOnly;
-        this.cookieDomain = cookieDomain;
-        this.cookieSameSite = cookieSameSite;
+    public CookieService(UniversalAuthProperties properties) {
+        this.refreshTokenCookieName = properties.getCookie().getRefreshTokenName();
+        this.cookieSecure = properties.getCookie().isSecure();
+        this.cookieHttpOnly = properties.getCookie().isHttpOnly();
+        this.cookieDomain = properties.getCookie().getDomain();
+        this.cookieSameSite = properties.getCookie().getSameSite();
     }
 
     // create method to attach cookie to response

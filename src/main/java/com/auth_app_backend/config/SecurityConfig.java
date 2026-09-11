@@ -31,11 +31,14 @@ public class SecurityConfig {
 
         private JwtAuthenticationFilter jwtAuthenticationFilter;
         private AuthenticationSuccessHandler authenticationSuccessHandler;
+        private UniversalAuthProperties properties;
 
         public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
-                        AuthenticationSuccessHandler authenticationSuccessHandler) {
+                        AuthenticationSuccessHandler authenticationSuccessHandler,
+                        UniversalAuthProperties properties) {
                 this.jwtAuthenticationFilter = jwtAuthenticationFilter;
                 this.authenticationSuccessHandler = authenticationSuccessHandler;
+                this.properties = properties;
         }
 
         @Bean
@@ -47,12 +50,15 @@ public class SecurityConfig {
                                 .authorizeHttpRequests(auth -> auth
                                                 .requestMatchers(AppConstants.AUTH_PUBLIC_URLS)
                                                 .permitAll()
-                                                .anyRequest().authenticated())
-                                .oauth2Login(oauth2 -> oauth2
-                                                .successHandler(authenticationSuccessHandler)
-                                                .failureHandler(null)
+                                                .anyRequest().authenticated());
 
-                                )
+                if (properties.getOauth2().isEnabled()) {
+                        http.oauth2Login(oauth2 -> oauth2
+                                        .successHandler(authenticationSuccessHandler)
+                                        .failureHandler(null));
+                }
+
+                http
                                 .logout(AbstractHttpConfigurer::disable)
                                 .exceptionHandling(ex -> ex
                                                 .authenticationEntryPoint((request, response, authException) -> {

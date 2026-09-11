@@ -11,6 +11,7 @@ import javax.crypto.SecretKey;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import com.auth_app_backend.config.UniversalAuthProperties;
 
 import com.auth_app_backend.entity.Role;
 import com.auth_app_backend.entity.User;
@@ -31,20 +32,16 @@ public class JwtService {
     private final long refreshExpirationInMillis;
     private final String jwtIssuer;
 
-    public JwtService(
-            @Value("${security.jwt.secret}") String secret,
-            @Value("${security.jwt.expiration}") long jwtExpirationInMillis,
-            @Value("${security.jwt.refresh-token-expiration}") long refreshExpirationInMillis,
-            @Value("${security.jwt.issuer}") String jwtIssuer) {
-
+    public JwtService(UniversalAuthProperties properties) {
+        String secret = properties.getJwt().getSecret();
         if (secret == null || secret.length() < 64) {
             throw new IllegalArgumentException("Secret key must be at least 64 bytes long");
         }
 
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-        this.jwtExpirationInMillis = jwtExpirationInMillis;
-        this.refreshExpirationInMillis = refreshExpirationInMillis;
-        this.jwtIssuer = jwtIssuer;
+        this.jwtExpirationInMillis = properties.getJwt().getExpiration();
+        this.refreshExpirationInMillis = properties.getJwt().getRefreshTokenExpiration();
+        this.jwtIssuer = properties.getJwt().getIssuer();
     }
 
     // Generate JWT token
