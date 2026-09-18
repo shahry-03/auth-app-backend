@@ -1,6 +1,8 @@
-# Universal Auth App - Backend
+# Universal Auth App - Spring Boot Template
 
-A robust and secure backend service for handling authentication and user management, built with **Spring Boot 3** and **Java 21**. This project provides a complete set of features for modern web applications, including JWT-based authentication, token refreshment, role-based access control, and OAuth2 readiness.
+A ready-to-use **Template Repository** for building robust and secure backend services, built with **Spring Boot 3** and **Java 21**. This project is designed to be the foundation for your new applications, providing a complete, out-of-the-box implementation for JWT-based authentication, token refreshment, role-based access control, and OAuth2 readiness.
+
+Simply click **"Use this template"** on GitHub to generate a brand new project with all this boilerplate code pre-configured!
 
 ## 🚀 Features
 
@@ -33,11 +35,13 @@ Before you begin, ensure you have met the following requirements:
 
 ## ⚙️ Getting Started
 
-### 1. Clone the repository
+### 1. Generate Your Project
 
+1. Click the green **"Use this template"** button at the top of the GitHub repository page to create a new repository.
+2. Clone your newly created repository:
 ```bash
-git clone <repository-url>
-cd auth-app-backend
+git clone <your-new-repository-url>
+cd <your-new-repo-name>
 ```
 
 ### 2. Configure the Database

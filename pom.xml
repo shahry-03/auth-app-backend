@@ -9,10 +9,10 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.auth_app</groupId>
-    <artifactId>universal-auth-spring-boot-starter</artifactId>
+    <artifactId>auth-app-backend-template</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>universal-auth-spring-boot-starter</name>
-    <description>Universal Authentication Spring Boot Starter</description>
+    <name>auth-app-backend-template</name>
+    <description>Universal Authentication Spring Boot Application Template</description>
     <url/>
     <licenses>
         <license/>
@@ -123,16 +123,22 @@
             <version>2.6.0</version>
         </dependency>
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-autoconfigure-processor</artifactId>
-            <optional>true</optional>
-        </dependency>
-
     </dependencies>
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
