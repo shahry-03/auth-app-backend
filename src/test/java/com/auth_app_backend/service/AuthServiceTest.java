@@ -1,0 +1,335 @@
+package com.auth_app_backend.service;
+
+import com.auth_app_backend.dto.request.LoginRequest;
+import com.auth_app_backend.dto.request.RegisterRequest;
+import com.auth_app_backend.dto.response.TokenResponse;
+import com.auth_app_backend.dto.response.UserResponse;
+import com.auth_app_backend.entity.RefreshToken;
+import com.auth_app_backend.entity.Role;
+import com.auth_app_backend.entity.User;
+import com.auth_app_backend.exception.ResourceNotFoundException;
+import com.auth_app_backend.repositories.RoleRepository;
+import com.auth_app_backend.repositories.UserRepository;
+import com.auth_app_backend.security.JwtService;
+import com.auth_app_backend.services.RefreshTokenService;
+import com.auth_app_backend.services.impl.AuthServiceImpl;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+@DisplayName("AuthService Tests")
+class AuthServiceTest {
+
+    @Mock private UserRepository userRepository;
+    @Mock private RoleRepository roleRepository;
+    @Mock private PasswordEncoder passwordEncoder;
+    @Mock private AuthenticationManager authenticationManager;
+    @Mock private JwtService jwtService;
+    @Mock private RefreshTokenService refreshTokenService;
+
+    @InjectMocks
+    private AuthServiceImpl authService;
+
+    private Role userRole;
+    private User testUser;
+
+    @BeforeEach
+    void setUp() {
+        userRole = Role.builder()
+            .id(UUID.randomUUID())
+            .roleName("USER")
+            .description("Default user role")
+            .permissions(new HashSet<>())
+            .build();
+
+        testUser = User.builder()
+            .id(UUID.randomUUID())
+            .email("test@example.com")
+            .name("Test User")
+            .password("hashed-password")
+            .enabled(true)
+            .roles(new HashSet<>(Set.of(userRole)))
+            .build();
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    //  registerUser
+    // ═══════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("registerUser()")
+    class RegisterUser {
+
+        @Test
+        @DisplayName("Should register user with USER role and hashed password")
+        void shouldRegisterSuccessfully() {
+            // given
+            RegisterRequest req = new RegisterRequest(
+                "new@example.com", "Plain@1234", "New User");
+
+            when(userRepository.existsByEmail("new@example.com")).thenReturn(false);
+            when(roleRepository.findByRoleName("USER")).thenReturn(Optional.of(userRole));
+            when(passwordEncoder.encode("Plain@1234")).thenReturn("hashed-new");
+            when(userRepository.save(any(User.class))).thenAnswer(inv -> {
+                User u = inv.getArgument(0);
+                u.setId(UUID.randomUUID());
+                return u;
+            });
+
+            // when
+            UserResponse result = authService.registerUser(req);
+
+            // then
+            assertThat(result.email()).isEqualTo("new@example.com");
+            assertThat(result.name()).isEqualTo("New User");
+            assertThat(result.roles()).hasSize(1);
+            assertThat(result.roles().iterator().next().roleName()).isEqualTo("USER");
+
+            // verify password was hashed
+            verify(passwordEncoder).encode("Plain@1234");
+
+            // verify saved user has hashed password (not plain)
+            verify(userRepository).save(argThat(user ->
+                user.getPassword().equals("hashed-new")
+            ));
+        }
+
+        @Test
+        @DisplayName("Should throw when email already registered")
+        void shouldThrowWhenEmailExists() {
+            RegisterRequest req = new RegisterRequest(
+                "existing@example.com", "Test@1234", "Name");
+
+            when(userRepository.existsByEmail("existing@example.com")).thenReturn(true);
+
+            assertThatThrownBy(() -> authService.registerUser(req))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("already registered");
+
+            verify(userRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Should throw when default USER role not found")
+        void shouldThrowWhenUserRoleMissing() {
+            RegisterRequest req = new RegisterRequest(
+                "new@example.com", "Test@1234", "Name");
+
+            when(userRepository.existsByEmail("new@example.com")).thenReturn(false);
+            when(roleRepository.findByRoleName("USER")).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> authService.registerUser(req))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("USER role not found");
+
+            verify(userRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Should set enabled=true by default")
+        void shouldSetEnabledTrue() {
+            RegisterRequest req = new RegisterRequest(
+                "new@example.com", "Test@1234", "Name");
+
+            when(userRepository.existsByEmail(anyString())).thenReturn(false);
+            when(roleRepository.findByRoleName("USER")).thenReturn(Optional.of(userRole));
+            when(passwordEncoder.encode(anyString())).thenReturn("hash");
+            when(userRepository.save(any(User.class))).thenAnswer(inv -> {
+                User u = inv.getArgument(0);
+                u.setId(UUID.randomUUID());
+                return u;
+            });
+
+            UserResponse result = authService.registerUser(req);
+
+            assertThat(result.enabled()).isTrue();
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    //  login
+    // ═══════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("login()")
+    class Login {
+
+        @Test
+        @DisplayName("Should return tokens on successful login")
+        void shouldLoginSuccessfully() {
+            LoginRequest req = new LoginRequest("test@example.com", "Plain@1234");
+
+            RefreshToken refreshToken = RefreshToken.builder()
+                .jti("jti-123")
+                .user(testUser)
+                .build();
+
+            when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .thenReturn(null); // Spring returns Authentication but we don't use it
+            when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
+            when(refreshTokenService.createForUser(testUser)).thenReturn(refreshToken);
+            when(jwtService.generateAccessToken(testUser)).thenReturn("access-token-xyz");
+            when(jwtService.generateRefreshToken(testUser, "jti-123")).thenReturn("refresh-token-abc");
+            when(jwtService.getJwtExpirationInMillis()).thenReturn(3600000L);
+
+            // when
+            TokenResponse result = authService.login(req);
+
+            // then
+            assertThat(result.accessToken()).isEqualTo("access-token-xyz");
+            assertThat(result.refreshToken()).isEqualTo("refresh-token-abc");
+            assertThat(result.tokenType()).isEqualTo("Bearer");
+            assertThat(result.expiresIn()).isEqualTo(3600000L);
+            assertThat(result.user().email()).isEqualTo("test@example.com");
+        }
+
+        @Test
+        @DisplayName("Should throw when authentication fails")
+        void shouldThrowOnBadCredentials() {
+            LoginRequest req = new LoginRequest("test@example.com", "wrong");
+
+            when(authenticationManager.authenticate(any()))
+                .thenThrow(new BadCredentialsException("Bad creds"));
+
+            assertThatThrownBy(() -> authService.login(req))
+                .isInstanceOf(BadCredentialsException.class)
+                .hasMessageContaining("Invalid email or password");
+
+            verify(refreshTokenService, never()).createForUser(any());
+        }
+
+        @Test
+        @DisplayName("Should throw when user is disabled")
+        void shouldThrowWhenDisabled() {
+            testUser.setEnabled(false);
+            LoginRequest req = new LoginRequest("test@example.com", "Plain@1234");
+
+            when(authenticationManager.authenticate(any())).thenReturn(null);
+            when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
+
+            assertThatThrownBy(() -> authService.login(req))
+                .isInstanceOf(DisabledException.class)
+                .hasMessageContaining("disabled");
+
+            verify(refreshTokenService, never()).createForUser(any());
+        }
+
+        @Test
+        @DisplayName("Should throw when user not found in DB")
+        void shouldThrowWhenUserNotFound() {
+            LoginRequest req = new LoginRequest("ghost@example.com", "pwd");
+
+            when(authenticationManager.authenticate(any())).thenReturn(null);
+            when(userRepository.findByEmail("ghost@example.com")).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> authService.login(req))
+                .isInstanceOf(BadCredentialsException.class);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    //  refresh
+    // ═══════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("refresh()")
+    class Refresh {
+
+        @Test
+        @DisplayName("Should rotate token and return new tokens")
+        void shouldRotateTokens() {
+            String oldToken = "old-refresh-token";
+
+            RefreshToken oldStored = RefreshToken.builder()
+                .jti("old-jti")
+                .user(testUser)
+                .build();
+            RefreshToken newStored = RefreshToken.builder()
+                .jti("new-jti")
+                .user(testUser)
+                .build();
+
+            when(refreshTokenService.validateAndGet(oldToken)).thenReturn(oldStored);
+            when(refreshTokenService.rotate(oldStored)).thenReturn(newStored);
+            when(jwtService.generateAccessToken(testUser)).thenReturn("new-access");
+            when(jwtService.generateRefreshToken(testUser, "new-jti")).thenReturn("new-refresh");
+            when(jwtService.getJwtExpirationInMillis()).thenReturn(3600000L);
+
+            TokenResponse result = authService.refresh(oldToken);
+
+            assertThat(result.accessToken()).isEqualTo("new-access");
+            assertThat(result.refreshToken()).isEqualTo("new-refresh");
+
+            verify(refreshTokenService).rotate(oldStored);
+        }
+
+        @Test
+        @DisplayName("Should propagate exception from validateAndGet")
+        void shouldPropagateValidationError() {
+            String invalidToken = "invalid";
+
+            when(refreshTokenService.validateAndGet(invalidToken))
+                .thenThrow(new BadCredentialsException("Invalid"));
+
+            assertThatThrownBy(() -> authService.refresh(invalidToken))
+                .isInstanceOf(BadCredentialsException.class);
+
+            verify(refreshTokenService, never()).rotate(any());
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    //  logout
+    // ═══════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("logout()")
+    class Logout {
+
+        @Test
+        @DisplayName("Should revoke token when value provided")
+        void shouldRevokeToken() {
+            authService.logout("valid-token");
+
+            verify(refreshTokenService).revokeByValue("valid-token");
+        }
+
+        @Test
+        @DisplayName("Should skip revocation when null")
+        void shouldSkipOnNull() {
+            authService.logout(null);
+
+            verify(refreshTokenService, never()).revokeByValue(any());
+        }
+
+        @Test
+        @DisplayName("Should skip revocation when blank")
+        void shouldSkipOnBlank() {
+            authService.logout("   ");
+
+            verify(refreshTokenService, never()).revokeByValue(any());
+        }
+    }
+}

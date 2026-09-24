@@ -1,0 +1,27 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop     # Test DB — clean slate har run pe
+    show-sql: false             # Test logs clean rakho
+
+universal:
+  auth:
+    jwt:
+      secret: test-secret-key-that-is-at-least-64-bytes-long-for-testing-purposes-only-12345
+      expiration: 3600000
+      refresh-token-expiration: 604800000
+      issuer: universal-auth-test
+    oauth2:
+      enabled: false             # OAuth2 tests me simulate karenge
+    cookie:
+      secure: false
+      http-only: true
+      same-site: Lax
+    frontend:
+      success-redirect: http://localhost:3000/test
+
+logging:
+  level:
+    root: WARN
+    com.auth_app_backend: INFO
+    org.hibernate.SQL: WARN
