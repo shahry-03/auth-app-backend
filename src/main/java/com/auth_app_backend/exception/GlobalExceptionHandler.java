@@ -17,7 +17,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
+import com.auth_app_backend.exception.EmailNotVerifiedException;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -208,4 +208,22 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
+
+    // ─── 403 Forbidden (email not verified) ────────────────────────
+    @ExceptionHandler(EmailNotVerifiedException.class)
+    public ResponseEntity<ApiError> handleEmailNotVerified(
+            EmailNotVerifiedException ex,
+            HttpServletRequest request) {
+
+        ApiError error = ApiError.of(
+            HttpStatus.FORBIDDEN.value(),
+            "Email Not Verified",
+            ex.getMessage(),
+            request.getRequestURI());
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+
 }
+

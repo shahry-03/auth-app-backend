@@ -22,6 +22,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.auth_app_backend.dto.request.VerifyEmailRequest;
+import com.auth_app_backend.dto.request.ResendVerificationRequest;
+import com.auth_app_backend.dto.request.ForgotPasswordRequest;
+import com.auth_app_backend.dto.request.ResetPasswordRequest;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -109,4 +113,53 @@ public class AuthController {
         int maxAgeSeconds = (int) (jwtService.getRefreshExpirationInMillis() / 1000);
         cookieService.attachRefreshCookie(response, refreshToken, maxAgeSeconds);
     }
+
+
+    @PostMapping("/verify-email")
+    public ResponseEntity<ApiResponse<Void>> verifyEmail(
+            @Valid @RequestBody VerifyEmailRequest request) {
+        authService.verifyEmail(request.token());
+        return ResponseEntity.ok(ApiResponse.success("Email verified successfully"));
+    }
+
+    @PostMapping("/resend-verification")
+    public ResponseEntity<ApiResponse<Void>> resendVerification(
+            @Valid @RequestBody ResendVerificationRequest request) {
+        authService.resendVerificationEmail(request.email());
+        return ResponseEntity.ok(ApiResponse.success(
+            "If the email is registered and unverified, a verification link has been sent"));
+    }
+
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //  PASSWORD RESET
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Request password reset email.
+     * Always returns 200 (does not reveal if email exists).
+     */
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request) {
+        authService.forgotPassword(request);
+        return ResponseEntity.ok(ApiResponse.success(
+            "If the email is registered, a password reset link has been sent"));
+    }
+
+    /**
+     * Reset password using token from email.
+     */
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ResponseEntity.ok(ApiResponse.success(
+            "Password reset successfully. Please login with your new password."));
+    }
+
+
+
+
 }

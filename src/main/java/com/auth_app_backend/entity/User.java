@@ -41,6 +41,10 @@ public class User implements UserDetails {
     @Builder.Default
     private boolean enabled = true;
 
+    @Builder.Default
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = false;
+
     
     @Column(updatable = false)
     private Instant createdAt;
