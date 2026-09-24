@@ -12,4 +12,18 @@ public class AppConstants {
             "/swagger-ui/**"
     };
 
+    /**
+     * URLs that require authentication but no specific role/permission.
+     * @PreAuthorize handles the actual authorization at method level.
+     */
+    public static final String[] AUTHENTICATED_URLS = {
+            "/api/v1/users/me",
+            "/api/v1/users/me/**"
+    };
+
+    /**
+     * Admin-only URL prefix — used for reference/documentation.
+     * Actual access control is enforced via @PreAuthorize("hasRole('ADMIN')").
+     */
+    public static final String ADMIN_URL_PREFIX = "/api/v1/admin";
 }

@@ -1,0 +1,94 @@
+{
+  "meta": {
+    "version": "1.1.0",
+    "exportedAt": "2026-09-24T08:52:52.730Z",
+    "exportedUsing": "Requestly API Client"
+  },
+  "environments": [
+    {
+      "id": "3e25407d-de3b-45fd-89fd-090e5d30abf0",
+      "name": "Auth Dev",
+      "isGlobal": false,
+      "variables": {
+        "baseUrl": {
+          "id": "12a930bc-1532-4aba-9954-208dca7fe257",
+          "syncValue": "http://localhost:8080",
+          "type": "string",
+          "isEnabled": true,
+          "isPersisted": true,
+          "rank": "hmu8k4jeb",
+          "createdAt": "2026-09-19 15:46:04.808542+00",
+          "updatedAt": "2026-09-24 08:52:48.592916+00",
+          "createdBy": "8aa4de5c-5d24-4e9d-84bd-842fba7dd12a",
+          "updatedBy": "8aa4de5c-5d24-4e9d-84bd-842fba7dd12a",
+          "overrideMeta": null
+        },
+        "userId": {
+          "id": "b16d3942-1ec6-4e2c-b531-d1deeeba7ff3",
+          "syncValue": "",
+          "type": "string",
+          "isEnabled": true,
+          "isPersisted": true,
+          "rank": "hmu8k7fcv",
+          "createdAt": "2026-09-19 15:46:04.808542+00",
+          "updatedAt": "2026-09-24 08:52:48.592916+00",
+          "createdBy": "8aa4de5c-5d24-4e9d-84bd-842fba7dd12a",
+          "updatedBy": "8aa4de5c-5d24-4e9d-84bd-842fba7dd12a",
+          "overrideMeta": null
+        },
+        "accessToken": {
+          "id": "2746cd3f-14bd-405c-a30f-15c0db9afea1",
+          "syncValue": "",
+          "type": "string",
+          "isEnabled": true,
+          "isPersisted": true,
+          "rank": "hmu8k7fcw",
+          "createdAt": "2026-09-23 12:48:52.910745+00",
+          "updatedAt": "2026-09-24 08:52:48.592916+00",
+          "createdBy": "8aa4de5c-5d24-4e9d-84bd-842fba7dd12a",
+          "updatedBy": "8aa4de5c-5d24-4e9d-84bd-842fba7dd12a",
+          "overrideMeta": null
+        },
+        "refreshToken": {
+          "id": "027b0b4c-7140-4b70-a41a-1b16c3972259",
+          "syncValue": "",
+          "type": "string",
+          "isEnabled": true,
+          "isPersisted": true,
+          "rank": "hmu8k7fcx",
+          "createdAt": "2026-09-23 12:48:52.910745+00",
+          "updatedAt": "2026-09-24 08:52:48.592916+00",
+          "createdBy": "8aa4de5c-5d24-4e9d-84bd-842fba7dd12a",
+          "updatedBy": "8aa4de5c-5d24-4e9d-84bd-842fba7dd12a",
+          "overrideMeta": null
+        },
+        "oldAccessToken": {
+          "id": "c52ab1e6-a4a4-473f-a990-8fb60e587702",
+          "syncValue": "",
+          "type": "string",
+          "isEnabled": true,
+          "isPersisted": true,
+          "rank": "hmu8k7fcy",
+          "createdAt": "2026-09-23 15:34:02.591708+00",
+          "updatedAt": "2026-09-24 08:52:48.592916+00",
+          "createdBy": "8aa4de5c-5d24-4e9d-84bd-842fba7dd12a",
+          "updatedBy": "8aa4de5c-5d24-4e9d-84bd-842fba7dd12a",
+          "overrideMeta": null
+        },
+        "permissionId": {
+          "id": "07c9ebe4-3aa0-4a56-a4d3-ad67f0db242b",
+          "syncValue": "",
+          "type": "string",
+          "isEnabled": true,
+          "isPersisted": true,
+          "rank": "hmu8k7fcz",
+          "createdAt": "2026-09-23 15:47:03.157751+00",
+          "updatedAt": "2026-09-24 08:52:48.592916+00",
+          "createdBy": "8aa4de5c-5d24-4e9d-84bd-842fba7dd12a",
+          "updatedBy": "8aa4de5c-5d24-4e9d-84bd-842fba7dd12a",
+          "overrideMeta": null
+        }
+      }
+    }
+  ]
+}

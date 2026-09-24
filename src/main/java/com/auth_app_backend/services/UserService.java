@@ -1,23 +1,25 @@
 package com.auth_app_backend.services;
 
-import com.auth_app_backend.dtos.UserDto;
+import com.auth_app_backend.dto.request.ChangePasswordRequest;
+import com.auth_app_backend.dto.request.UpdateUserRequest;
+import com.auth_app_backend.dto.response.UserResponse;
+
+import java.util.List;
+import java.util.UUID;
 
 public interface UserService {
-    // Create User
-    public UserDto createUser(UserDto userDto);
 
-    // Update User
-    public UserDto updateUser(UserDto userDto, String userId);
+    UserResponse getUserById(UUID userId);
 
-    // Get User by Id
-    public UserDto getUserById(String userId);
+    UserResponse getUserByEmail(String email);
 
-    // Get User by Email
-    public UserDto getUserByEmail(String email);
+    List<UserResponse> getAllUsers();
 
-    // Get All Users
-    public Iterable<UserDto> getAllUsers();
+    UserResponse updateUser(UUID userId, UpdateUserRequest request);
 
-    // Delete User
-    public void deleteUser(String userId);
+    void deleteUser(UUID userId);
+
+    void changePassword(UUID userId, ChangePasswordRequest request);
+
+    void enableUser(UUID userId, boolean enabled);
 }

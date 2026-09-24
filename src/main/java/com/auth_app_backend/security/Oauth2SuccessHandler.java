@@ -1,133 +1,141 @@
 package com.auth_app_backend.security;
 
 import java.io.IOException;
-import java.time.Instant;
-import java.util.UUID;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 
+import com.auth_app_backend.config.UniversalAuthProperties;
 import com.auth_app_backend.entity.Provider;
 import com.auth_app_backend.entity.RefreshToken;
+import com.auth_app_backend.entity.Role;
 import com.auth_app_backend.entity.User;
-import com.auth_app_backend.repositories.RefreshTokenRepository;
+import com.auth_app_backend.exception.ResourceNotFoundException;
+import com.auth_app_backend.repositories.RoleRepository;
 import com.auth_app_backend.repositories.UserRepository;
+import com.auth_app_backend.services.RefreshTokenService;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import com.auth_app_backend.config.UniversalAuthProperties;
 
 @Component
 public class Oauth2SuccessHandler implements AuthenticationSuccessHandler {
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
-    private final UserRepository userRepository;
-    private final JwtService jwtService;
-    private final RefreshTokenRepository refreshTokenRepository;
-    private final String frontendSuccessRedirect;
-    private final CookieService cookieService;
 
-    public Oauth2SuccessHandler(UserRepository userRepository, JwtService jwtService,
-            RefreshTokenRepository refreshTokenRepository, UniversalAuthProperties properties, CookieService cookieService) {
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
+    private final CookieService cookieService;
+    private final String frontendSuccessRedirect;
+
+    public Oauth2SuccessHandler(UserRepository userRepository,
+                                RoleRepository roleRepository,
+                                JwtService jwtService,
+                                RefreshTokenService refreshTokenService,
+                                CookieService cookieService,
+                                UniversalAuthProperties properties) {
         this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
         this.jwtService = jwtService;
-        this.refreshTokenRepository = refreshTokenRepository;
-        this.frontendSuccessRedirect = properties.getFrontend().getSuccessRedirect();
+        this.refreshTokenService = refreshTokenService;
         this.cookieService = cookieService;
+        this.frontendSuccessRedirect = properties.getFrontend().getSuccessRedirect();
     }
 
     @Override
-    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
-            Authentication authentication) throws IOException, ServletException {
-        logger.info("Authentication successful for user: {}", authentication.getName());
-        logger.info(authentication.toString());
+    public void onAuthenticationSuccess(HttpServletRequest request,
+                                        HttpServletResponse response,
+                                        Authentication authentication)
+            throws IOException, ServletException {
 
         OAuth2User oauth2User = (OAuth2User) authentication.getPrincipal();
 
-        // Identify the user
         String registrationId = "unknown";
         if (authentication instanceof OAuth2AuthenticationToken token) {
             registrationId = token.getAuthorizedClientRegistrationId();
-
-        }
-        logger.info("registrationId:" + registrationId);
-        logger.info("user attributes: " + oauth2User.getAttributes().toString());
-
-        User user;
-        switch (registrationId) {
-            case "google" -> {
-                // Handle Google authentication
-                String googleId = oauth2User.getAttributes().getOrDefault("sub", "").toString();
-                String email = oauth2User.getAttributes().getOrDefault("email", "").toString();
-                String name = oauth2User.getAttributes().getOrDefault("name", "").toString();
-                String picture = oauth2User.getAttributes().getOrDefault("picture", "").toString();
-                User newUser = User.builder()
-                        .email(email)
-                        .name(name)
-                        .image(picture)
-                        .provider(Provider.GOOGLE)
-                        .providerId(googleId)
-                        .build();
-
-                user = userRepository.findByEmail(email).orElseGet(() -> userRepository.save(newUser));
-            }
-            case "github" -> {
-                // Handle GitHub authentication
-                String githubId = oauth2User.getAttributes().getOrDefault("id", "").toString();
-                String name = oauth2User.getAttributes().getOrDefault("login", "").toString();
-                String email = oauth2User.getAttributes().getOrDefault("email", "").toString();
-                if (email == null || email.isEmpty()) {
-                    // If email is not provided, you might want to fetch it from another endpoint or
-                    // handle it accordingly
-                    email = name + "@github.com"; // Placeholder email if GitHub doesn't provide one
-
-                }
-                String picture = oauth2User.getAttributes().getOrDefault("avatar_url", "").toString();
-                User newUser = User.builder()
-                        .email(email)
-                        .name(name)
-                        .image(picture)
-                        .provider(Provider.GITHUB)
-                        .providerId(githubId)
-                        .build();
-                user = userRepository.findByEmail(email).orElseGet(() -> userRepository.save(newUser));
-            }
-            default -> {
-                // Handle unknown provider
-                throw new IllegalArgumentException("Unknown provider: " + registrationId);
-
-            }
         }
 
-        // create refresh token
-        String jti = UUID.randomUUID().toString();
-        RefreshToken refreshToken = RefreshToken.builder()
-                .jti(jti)
-                .user(user)
-                .revoked(false)
-                .createdAt(Instant.now())
-                .expiresAt(Instant.now().plusMillis(jwtService.getRefreshExpirationInMillis()))
-                .build();
+        logger.info("OAuth2 login success via provider: {}", registrationId);
 
-        refreshTokenRepository.save(refreshToken);
+        User user = switch (registrationId) {
+            case "google" -> handleGoogle(oauth2User);
+            case "github" -> handleGithub(oauth2User);
+            default -> throw new IllegalArgumentException("Unknown provider: " + registrationId);
+        };
+
+        // Create refresh token via service (single source of truth)
+        RefreshToken refreshToken = refreshTokenService.createForUser(user);
 
         String accessToken = jwtService.generateAccessToken(user);
-        String refreshTokenString = jwtService.generateRefreshToken(user, refreshToken.getJti());
+        String refreshTokenValue = jwtService.generateRefreshToken(user, refreshToken.getJti());
 
-        cookieService.attachRefreshCookie(response, refreshTokenString,
-                (int) jwtService.getRefreshExpirationInMillis());
-
-        // response.getWriter().write("Login Successful");
+        // Cookie maxAge is in SECONDS — convert from millis
+        int maxAgeSeconds = (int) (jwtService.getRefreshExpirationInMillis() / 1000);
+        cookieService.attachRefreshCookie(response, refreshTokenValue, maxAgeSeconds);
 
         response.sendRedirect(frontendSuccessRedirect);
-
     }
 
+    // ─────────────────────────────────────────────
+    //  PROVIDER HANDLERS
+    // ─────────────────────────────────────────────
+
+    private User handleGoogle(OAuth2User oauth2User) {
+        var attrs = oauth2User.getAttributes();
+        String googleId = String.valueOf(attrs.getOrDefault("sub", ""));
+        String email    = String.valueOf(attrs.getOrDefault("email", ""));
+        String name     = String.valueOf(attrs.getOrDefault("name", ""));
+        String picture  = String.valueOf(attrs.getOrDefault("picture", ""));
+
+        return findOrCreateUser(email, name, picture, Provider.GOOGLE, googleId);
+    }
+
+    private User handleGithub(OAuth2User oauth2User) {
+        var attrs = oauth2User.getAttributes();
+        String githubId = String.valueOf(attrs.getOrDefault("id", ""));
+        String login    = String.valueOf(attrs.getOrDefault("login", ""));
+        String email    = String.valueOf(attrs.getOrDefault("email", ""));
+        String picture  = String.valueOf(attrs.getOrDefault("avatar_url", ""));
+
+        // GitHub may not expose email — use provider id based placeholder (stable)
+        if (email == null || email.isBlank() || "null".equals(email)) {
+            email = githubId + "@github.placeholder";
+        }
+
+        String name = (login == null || login.isBlank()) ? "github-user" : login;
+        return findOrCreateUser(email, name, picture, Provider.GITHUB, githubId);
+    }
+
+    private User findOrCreateUser(String email, String name, String image,
+                                  Provider provider, String providerId) {
+
+        return userRepository.findByEmail(email).orElseGet(() -> {
+
+            Role defaultRole = roleRepository.findByRoleName("USER")
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    "Default USER role not found. Check RbacDataInitializer."));
+
+            User newUser = User.builder()
+                .email(email)
+                .name(name)
+                .image(image)
+                .provider(provider)
+                .providerId(providerId)
+                .enabled(true)
+                .roles(new HashSet<>(Set.of(defaultRole)))   // ✅ RBAC default role
+                .build();
+
+            return userRepository.save(newUser);
+        });
+    }
 }

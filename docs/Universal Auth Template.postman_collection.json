@@ -1,0 +1,1567 @@
+{
+  "info": {
+    "name": "Universal Auth Template",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "id": "b8adce7e-29af-4299-9b17-81e545ffaff5",
+      "name": "Auth",
+      "item": [
+        {
+          "id": "40a20f4a-8ee4-4d00-9886-4800677fda95",
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"shahry3@test.com\",\"password\":\"Test@1234\",\"name\":\"Shahry Test 2\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has success=true\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test(\"Password not leaked\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.password).to.be.undefined;",
+                  "});",
+                  "",
+                  "pm.test(\"Has USER role\", () => {",
+                  "    const json = pm.response.json();",
+                  "    const roles = json.data.roles.map(r => r.roleName);",
+                  "    pm.expect(roles).to.include(\"USER\");",
+                  "});",
+                  "",
+                  "// Save userId for later",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.id) {",
+                  "    pm.environment.set(\"userId\", json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "ece9b55b-ba5e-4160-b80e-157fcb2d1465",
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 204\", () => {",
+                  "    pm.response.to.have.status(204);",
+                  "});",
+                  "",
+                  "pm.test(\"Cookie is cleared\", () => {",
+                  "    // Cookie should be cleared (max-age=0)",
+                  "    pm.expect(pm.response.headers.has(\"Set-Cookie\")).to.be.true;",
+                  "});",
+                  "",
+                  "// Clear local tokens",
+                  "pm.environment.unset(\"accessToken\");",
+                  "pm.environment.unset(\"refreshToken\");",
+                  "pm.environment.unset(\"oldAccessToken\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "c4546dfe-ae96-4c5d-9270-a4e158ef76fc",
+          "name": "Refresh token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Has new accessToken\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.accessToken).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"Has new refreshToken\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.refreshToken).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"New accessToken differs from old\", () => {",
+                  "    const json = pm.response.json();",
+                  "    const oldToken = pm.environment.get(\"accessToken\");",
+                  "    pm.expect(json.data.accessToken).to.not.eql(oldToken);",
+                  "});",
+                  "",
+                  "// Update tokens in environment",
+                  "const json = pm.response.json();",
+                  "if (json.data) {",
+                  "    pm.environment.set(\"oldAccessToken\", pm.environment.get(\"accessToken\"));",
+                  "    pm.environment.set(\"accessToken\", json.data.accessToken);",
+                  "    pm.environment.set(\"refreshToken\", json.data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "743345d2-bf71-4063-9f97-e26f5a7ec1aa",
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"shahry3@test.com\",\"password\":\"abcd@1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has success=true\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test(\"Has accessToken\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.accessToken).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"Has refreshToken\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.refreshToken).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"Token type is Bearer\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.tokenType).to.eql(\"Bearer\");",
+                  "});",
+                  "",
+                  "pm.test(\"User object present\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.user).to.be.an('object');",
+                  "    pm.expect(json.data.user.email).to.eql(\"shahry3@test.com\");",
+                  "});",
+                  "",
+                  "pm.test(\"Password not leaked\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.user.password).to.be.undefined;",
+                  "});",
+                  "",
+                  "pm.test(\"Cookie is set (refresh token)\", () => {",
+                  "    pm.expect(pm.response.headers.has(\"Set-Cookie\")).to.be.true;",
+                  "});",
+                  "",
+                  "// ⚡ AUTO-SAVE TOKENS for subsequent requests",
+                  "const json = pm.response.json();",
+                  "if (json.data) {",
+                  "    pm.environment.set(\"accessToken\", json.data.accessToken);",
+                  "    pm.environment.set(\"refreshToken\", json.data.refreshToken);",
+                  "    pm.environment.set(\"userId\", json.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ec7f4dab-2101-4542-8205-c91c6c459a10",
+      "name": "User API (self-service)",
+      "item": [
+        {
+          "id": "cce4be29-a5c9-4ad7-88e3-102748428a11",
+          "name": "Get My profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiIyMDVlNWQwZi00YjRiLTQ1MmUtYTNiNi1jODIzYzVlN2ZhNGIiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDE2MjI4NCwiZXhwIjoxNzkwMTY1ODg0LCJ0eXBlIjoiYWNjZXNzIiwiZW1haWwiOiJzaGFocnkzQHRlc3QuY29tIiwicm9sZXMiOlsiVVNFUiJdfQ.hiBqqVlA2CVtVSJBOOjPZFJ-WnkcaQNtym93c0sPZFvGRNHxVbi39foHliY1WBndu-CXv3KfwbagKm5viQO4kw",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Email matches\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.email).to.eql(\"shahry3@test.com\");",
+                  "});",
+                  "",
+                  "pm.test(\"Password not leaked\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.password).to.be.undefined;",
+                  "});",
+                  "",
+                  "pm.test(\"Has USER role\", () => {",
+                  "    const json = pm.response.json();",
+                  "    const roles = json.data.roles.map(r => r.roleName);",
+                  "    pm.expect(roles).to.include(\"USER\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "a62fa8b1-1c5d-4949-aca8-523e43d40aca",
+          "name": "Change My Password",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/change-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "change-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"currentPassword\":\"Test@1234\",\"newPassword\":\"NewTest@5678\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiI3MTkwZjQ3Ny1iMzc2LTQwNTYtYjQ3ZS1kZDI1NjM0MmRkYzEiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDE2OTk1OSwiZXhwIjoxNzkwMTczNTU5LCJ0eXBlIjoiYWNjZXNzIiwiZW1haWwiOiJzaGFocnkzQHRlc3QuY29tIiwicm9sZXMiOlsiVVNFUiIsIkFETUlOIl19.-Tc1x6QCOUZsph3oOrWHeJZ4TTnHSKQ_HScYc9W53B6gvOw7Ft1xghlvX8zbI2qcRV48c-wQDySTT4mfxUuUKA",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Message confirms password change\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.message.toLowerCase()).to.include(\"password\");",
+                  "});",
+                  "",
+                  "pm.test(\"Password not leaked in response\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data).to.be.null;   // ApiResponse.success(\"message\") -> data null",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "501d9588-b5b2-41b3-881c-acd1a47c6eb2",
+          "name": "Update My Profile",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Shahry Updated\",\"image\":\"https://example.com/avatar.png\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiI4MGQ0ZjUyYS01MDk1LTQ2ZGUtYTZlMC03NTQ5NGU2NWI5MTMiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDE2NzczMCwiZXhwIjoxNzkwMTcxMzMwLCJ0eXBlIjoiYWNjZXNzIiwicm9sZXMiOlsiVVNFUiIsIkFETUlOIl0sImVtYWlsIjoic2hhaHJ5M0B0ZXN0LmNvbSJ9.DT91EPQAwNTgjHfcFeZbL5arUQOc-NJU3v-Sto3TXoFU0of1CdAL3j6AtMFSczN2tw8uSecP71_fq2XVEQ9h_A",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Name updated\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.name).to.eql(\"Shahry Updated\");",
+                  "});",
+                  "",
+                  "pm.test(\"Image updated\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.image).to.eql(\"https://example.com/avatar.png\");",
+                  "});",
+                  "",
+                  "pm.test(\"Email NOT changed\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.email).to.eql(\"shahry3@test.com\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "639cd53b-1614-4d4c-b1a2-effffd2dac3e",
+      "name": "Admin API",
+      "item": [
+        {
+          "id": "bd4bf4a4-1246-4e80-8931-2e3ecec2aad4",
+          "name": "Users",
+          "item": [
+            {
+              "id": "b42457c2-0a5c-46e9-905f-a7a7ef82847d",
+              "name": "Verify User Gone (404)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/users/d2a5bbd4-88a3-4e45-8723-63414d198bdd",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "users",
+                    "d2a5bbd4-88a3-4e45-8723-63414d198bdd"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiJkN2FjZjRiYy1jNmJmLTQ1NzMtODU0NC01YzFkMjFlNzJiMmMiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDE4MjgxNywiZXhwIjoxNzkwMTg2NDE3LCJ0eXBlIjoiYWNjZXNzIiwiZW1haWwiOiJzaGFocnkzQHRlc3QuY29tIiwicm9sZXMiOlsiVVNFUiIsIkFETUlOIl19.tQrEJplrHzCTm9nR7EQUGbeUnvHAmtNBtFhPQm53zqFw8eZfnlWJaUrrU9V7exwz9-V0F9FVfhUYkDMRT-qIQA",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "id": "55b975e5-427a-4c46-9093-a65079feebd0",
+              "name": "Delete User (Destructive)",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/users/d2a5bbd4-88a3-4e45-8723-63414d198bdd",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "users",
+                    "d2a5bbd4-88a3-4e45-8723-63414d198bdd"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "f6337dbc-3c09-4c28-a3c3-88ff0a347de0",
+              "name": "Re-Enable User",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/users/d2a5bbd4-88a3-4e45-8723-63414d198bdd/status?enabled=true",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "users",
+                    "d2a5bbd4-88a3-4e45-8723-63414d198bdd",
+                    "status"
+                  ],
+                  "query": [
+                    {
+                      "key": "enabled",
+                      "value": "true"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Message confirms enable\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.message.toLowerCase()).to.include(\"enabled\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "2de06dcf-255c-4504-a4be-21d6a4f70b2c",
+              "name": "Enable/Disable User",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/users/d2a5bbd4-88a3-4e45-8723-63414d198bdd/status?enabled=false",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "users",
+                    "d2a5bbd4-88a3-4e45-8723-63414d198bdd",
+                    "status"
+                  ],
+                  "query": [
+                    {
+                      "key": "enabled",
+                      "value": "false"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Message confirms disable\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.message.toLowerCase()).to.include(\"disabled\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "cbdbf52e-146d-451c-9fe9-fda42ccfb9d5",
+              "name": "Delete ADMIN (Built-in)",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/roles/40d85f87-9cc4-4c7d-80ad-05e384d29461",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "roles",
+                    "40d85f87-9cc4-4c7d-80ad-05e384d29461"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 400\", () => {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Message mentions built-in\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.message.toLowerCase()).to.include(\"built-in\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "393cf39f-97d1-4a55-8603-4f9eff33511a",
+              "name": "Delete USER (Built-in)",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/roles/30f02e07-f5a2-41ca-8e76-1ef708f6ab93",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "roles",
+                    "30f02e07-f5a2-41ca-8e76-1ef708f6ab93"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 400 (built-in protection)\", () => {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Message mentions built-in\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.message.toLowerCase()).to.include(\"built-in\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "b3d08db7-58bb-4efb-bd93-db3a075bbda1",
+              "name": "List Users",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/users",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "users"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "",
+                  "options": {
+                    "raw": {
+                      "language": "text"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiIyMDVlNWQwZi00YjRiLTQ1MmUtYTNiNi1jODIzYzVlN2ZhNGIiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDE2MjI4NCwiZXhwIjoxNzkwMTY1ODg0LCJ0eXBlIjoiYWNjZXNzIiwiZW1haWwiOiJzaGFocnkzQHRlc3QuY29tIiwicm9sZXMiOlsiVVNFUiJdfQ.hiBqqVlA2CVtVSJBOOjPZFJ-WnkcaQNtym93c0sPZFvGRNHxVbi39foHliY1WBndu-CXv3KfwbagKm5viQO4kw",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200 (ADMIN access)\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Returns user list\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.success).to.be.true;",
+                      "    pm.expect(json.data).to.be.an('array');",
+                      "    pm.expect(json.data.length).to.be.greaterThan(0);",
+                      "});",
+                      "",
+                      "pm.test(\"Passwords not leaked\", () => {",
+                      "    const json = pm.response.json();",
+                      "    json.data.forEach(user => {",
+                      "        pm.expect(user.password).to.be.undefined;",
+                      "    });",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "8f8231e9-bebf-4eea-8008-3c545bebfec0",
+              "name": "Get User by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/users/ea7e8595-745f-46c6-b9d6-28082da0be8f",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "users",
+                    "ea7e8595-745f-46c6-b9d6-28082da0be8f"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiJmYTFiYTMzZS00YzhlLTRhZjYtOWRlMy0yN2NjMDBkYWZmOWEiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDIyODcyNCwiZXhwIjoxNzkwMjMyMzI0LCJlbWFpbCI6InNoYWhyeTNAdGVzdC5jb20iLCJ0eXBlIjoiYWNjZXNzIiwicm9sZXMiOlsiVVNFUiIsIkFETUlOIl19.6jLUYiVrrlVwYb4YweVZRXD0rOd5W4O0I1NWJWexs8t6forrr3MCnas1pys1nFLzgD5Z5pEWU716ev7nlpEThA",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Returns correct user\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.data.email).to.eql(\"shahry@test.com\");",
+                      "});",
+                      "",
+                      "pm.test(\"Password not leaked\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.data.password).to.be.undefined;",
+                      "});",
+                      "",
+                      "pm.test(\"Has roles array\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.data.roles).to.be.an('array');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "c24b18f2-00bc-4d6a-b9ca-35b273e171ca",
+              "name": "Update User",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/users/eafa8318-481f-46b6-bc92-83a71380b75e",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "users",
+                    "eafa8318-481f-46b6-bc92-83a71380b75e"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"name\":\"Admin Updated Name\",\"enabled\":true}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiJmYTFiYTMzZS00YzhlLTRhZjYtOWRlMy0yN2NjMDBkYWZmOWEiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDIyODcyNCwiZXhwIjoxNzkwMjMyMzI0LCJlbWFpbCI6InNoYWhyeTNAdGVzdC5jb20iLCJ0eXBlIjoiYWNjZXNzIiwicm9sZXMiOlsiVVNFUiIsIkFETUlOIl19.6jLUYiVrrlVwYb4YweVZRXD0rOd5W4O0I1NWJWexs8t6forrr3MCnas1pys1nFLzgD5Z5pEWU716ev7nlpEThA",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Name updated\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.data.name).to.eql(\"Admin Updated Name\");",
+                      "});",
+                      "",
+                      "pm.test(\"Email NOT changed\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.data.email).to.eql(\"shahry3@test.com\");",
+                      "});",
+                      "",
+                      "pm.test(\"updatedAt changed\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.data.updatedAt).to.not.be.null;",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "92f11097-3ce4-4954-8c9f-805cea9e431c",
+          "name": "Roles",
+          "item": [
+            {
+              "id": "145246af-9948-4e1b-9d68-4fe92e5a6d12",
+              "name": "Delete Role",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/roles/113d822a-0854-494a-bdcc-6d9a958f64a3",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "roles",
+                    "113d822a-0854-494a-bdcc-6d9a958f64a3"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Message confirms deletion\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.message.toLowerCase()).to.include(\"deleted\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "dd1360bc-1915-4fb4-b863-92e015b506cc",
+              "name": "Remove Role",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/roles/users/eafa8318-481f-46b6-bc92-83a71380b75e/remove/113d822a-0854-494a-bdcc-6d9a958f64a3",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "roles",
+                    "users",
+                    "eafa8318-481f-46b6-bc92-83a71380b75e",
+                    "remove",
+                    "113d822a-0854-494a-bdcc-6d9a958f64a3"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"User back to 2 roles\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.data.roles.length).to.eql(2);",
+                      "});",
+                      "",
+                      "pm.test(\"MODERATOR removed\", () => {",
+                      "    const json = pm.response.json();",
+                      "    const roleNames = json.data.roles.map(r => r.roleName);",
+                      "    pm.expect(roleNames).to.not.include(\"MODERATOR\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "cc9a6d4e-6820-4dc7-897f-fe247d6becce",
+              "name": "Assign Role",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/roles/users/eafa8318-481f-46b6-bc92-83a71380b75e/assign/113d822a-0854-494a-bdcc-6d9a958f64a3",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "roles",
+                    "users",
+                    "eafa8318-481f-46b6-bc92-83a71380b75e",
+                    "assign",
+                    "113d822a-0854-494a-bdcc-6d9a958f64a3"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "",
+                  "options": {
+                    "raw": {
+                      "language": "text"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiI2ZjBjOGNlMy02NDU3LTQwYmEtYTI2OS00ZTc1NTdkYzRmOTYiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDE3NzYyNCwiZXhwIjoxNzkwMTgxMjI0LCJ0eXBlIjoiYWNjZXNzIiwiZW1haWwiOiJzaGFocnkzQHRlc3QuY29tIiwicm9sZXMiOlsiVVNFUiIsIkFETUlOIl19.x3Te-ZAqMU4CMyJ33r29Ph_EOhY53kGYNesDrIHFU6KcEQvgQlYFkPo4FOgbc6FNTU4Dx-Gt7y9iuHTRf_mKwA",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"User has 3 roles now\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.data.roles.length).to.eql(3);",
+                      "});",
+                      "",
+                      "pm.test(\"Has MODERATOR + ADMIN + USER\", () => {",
+                      "    const json = pm.response.json();",
+                      "    const roleNames = json.data.roles.map(r => r.roleName);",
+                      "    pm.expect(roleNames).to.include(\"MODERATOR\");",
+                      "    pm.expect(roleNames).to.include(\"ADMIN\");",
+                      "    pm.expect(roleNames).to.include(\"USER\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "bfb92613-a510-430b-a620-6d05aa094230",
+              "name": "Update Role",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/roles/113d822a-0854-494a-bdcc-6d9a958f64a3",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "roles",
+                    "113d822a-0854-494a-bdcc-6d9a958f64a3"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"description\":\"Updated moderator role\",\"permissions\":[\"user:read\",\"user:write\",\"profile:read\",\"profile:write\"]}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Description updated\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.data.description).to.eql(\"Updated moderator role\");",
+                      "});",
+                      "",
+                      "pm.test(\"Permissions increased to 4\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.data.permissions.length).to.eql(4);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "bc1d0619-a3f0-4a5e-964f-054275427e51",
+              "name": "Get Role by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/roles/113d822a-0854-494a-bdcc-6d9a958f64a3",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "roles",
+                    "113d822a-0854-494a-bdcc-6d9a958f64a3"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiI2ZjBjOGNlMy02NDU3LTQwYmEtYTI2OS00ZTc1NTdkYzRmOTYiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDE3NzYyNCwiZXhwIjoxNzkwMTgxMjI0LCJ0eXBlIjoiYWNjZXNzIiwiZW1haWwiOiJzaGFocnkzQHRlc3QuY29tIiwicm9sZXMiOlsiVVNFUiIsIkFETUlOIl19.x3Te-ZAqMU4CMyJ33r29Ph_EOhY53kGYNesDrIHFU6KcEQvgQlYFkPo4FOgbc6FNTU4Dx-Gt7y9iuHTRf_mKwA",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Correct role\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.data.roleName).to.eql(\"MODERATOR\");",
+                      "});",
+                      "",
+                      "pm.test(\"Has 2 permissions\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.data.permissions.length).to.eql(2);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "50fbb285-04d8-4b31-a5e4-39f83d99106d",
+              "name": "Create Role",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/roles",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "roles"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"roleName\":\"MODERATOR\",\"description\":\"Content moderator role\",\"permissions\":[\"user:read\",\"profile:read\"]}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 201\", () => {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test(\"Role created with permissions\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.data.roleName).to.eql(\"MODERATOR\");",
+                      "    pm.expect(json.data.permissions.length).to.eql(2);",
+                      "});",
+                      "",
+                      "pm.test(\"Has user:read permission\", () => {",
+                      "    const json = pm.response.json();",
+                      "    const permNames = json.data.permissions.map(p => p.name);",
+                      "    pm.expect(permNames).to.include(\"user:read\");",
+                      "    pm.expect(permNames).to.include(\"profile:read\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "8b6122be-598a-4215-94b8-07799beff342",
+              "name": "List All Roles",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/roles",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "roles"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Returns roles list\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.data).to.be.an('array');",
+                      "    pm.expect(json.data.length).to.be.greaterThan(0);",
+                      "});",
+                      "",
+                      "pm.test(\"Has USER and ADMIN\", () => {",
+                      "    const json = pm.response.json();",
+                      "    const roleNames = json.data.map(r => r.roleName);",
+                      "    pm.expect(roleNames).to.include(\"USER\");",
+                      "    pm.expect(roleNames).to.include(\"ADMIN\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "346962b9-f105-4204-9f89-244f1c178f70",
+              "name": "Get User Roles",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/roles/users/eafa8318-481f-46b6-bc92-83a71380b75e",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "roles",
+                    "users",
+                    "eafa8318-481f-46b6-bc92-83a71380b75e"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiJmYTFiYTMzZS00YzhlLTRhZjYtOWRlMy0yN2NjMDBkYWZmOWEiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDIyODcyNCwiZXhwIjoxNzkwMjMyMzI0LCJlbWFpbCI6InNoYWhyeTNAdGVzdC5jb20iLCJ0eXBlIjoiYWNjZXNzIiwicm9sZXMiOlsiVVNFUiIsIkFETUlOIl19.6jLUYiVrrlVwYb4YweVZRXD0rOd5W4O0I1NWJWexs8t6forrr3MCnas1pys1nFLzgD5Z5pEWU716ev7nlpEThA",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Returns roles array\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.data).to.be.an('array');",
+                      "});",
+                      "",
+                      "pm.test(\"shahry3 has ADMIN + USER\", () => {",
+                      "    const json = pm.response.json();",
+                      "    const roleNames = json.data.map(r => r.roleName);",
+                      "    pm.expect(roleNames).to.include(\"ADMIN\");",
+                      "    pm.expect(roleNames).to.include(\"USER\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "6824946d-8beb-405c-9524-ccca6fde9d7c",
+          "name": "Permissions",
+          "item": [
+            {
+              "id": "4fb32aca-55cd-49bb-9367-84ea4c0d83eb",
+              "name": "Delete Permission",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/permissions/77388f88-307f-44f7-abad-b38a23352631",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "permissions",
+                    "77388f88-307f-44f7-abad-b38a23352631"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiI2ZjBjOGNlMy02NDU3LTQwYmEtYTI2OS00ZTc1NTdkYzRmOTYiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDE3NzYyNCwiZXhwIjoxNzkwMTgxMjI0LCJ0eXBlIjoiYWNjZXNzIiwiZW1haWwiOiJzaGFocnkzQHRlc3QuY29tIiwicm9sZXMiOlsiVVNFUiIsIkFETUlOIl19.x3Te-ZAqMU4CMyJ33r29Ph_EOhY53kGYNesDrIHFU6KcEQvgQlYFkPo4FOgbc6FNTU4Dx-Gt7y9iuHTRf_mKwA",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "62d3ea50-8916-4609-be33-9555730f13c6",
+              "name": "Update Permission",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/permissions/77388f88-307f-44f7-abad-b38a23352631",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "permissions",
+                    "77388f88-307f-44f7-abad-b38a23352631"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"description\":\"Updated description for product read\"}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Description updated\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.data.description).to.eql(\"Updated description for product read\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "bc723c48-344b-49a6-940c-0bd97e45fb8c",
+              "name": "Get Permission by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/permissions/77388f88-307f-44f7-abad-b38a23352631",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "permissions",
+                    "77388f88-307f-44f7-abad-b38a23352631"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Correct permission\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.data.name).to.eql(\"product:read\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "ee2857f3-9d14-4622-af5f-a597fb43fd58",
+              "name": "Create Permission",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/permissions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "permissions"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"name\":\"product:read\",\"description\":\"Read product details\"}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 201\", () => {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test(\"Permission created\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.data.name).to.eql(\"product:read\");",
+                      "});",
+                      "",
+                      "// Save permission ID",
+                      "const json = pm.response.json();",
+                      "if (json.data && json.data.id) {",
+                      "    pm.environment.set(\"permissionId\", json.data.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "8a296547-fc51-4484-a7a6-8c591878bb83",
+              "name": "List All Permissions",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/permissions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "permissions"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Returns 6 permissions\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.data).to.be.an('array');",
+                      "    pm.expect(json.data.length).to.be.greaterThan(0);",
+                      "    pm.expect(json.data.length).to.eql(6);  // Base 6 permissions",
+                      "});",
+                      "",
+                      "pm.test(\"Permissions have name field\", () => {",
+                      "    const json = pm.response.json();",
+                      "    json.data.forEach(p => {",
+                      "        pm.expect(p.name).to.be.a('string');",
+                      "    });",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

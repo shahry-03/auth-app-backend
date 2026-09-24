@@ -1,15 +1,11 @@
 package com.auth_app_backend.security;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -37,82 +33,68 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain) throws ServletException, IOException {
+                                    HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
+
         String header = request.getHeader("Authorization");
-        logger.info("Authorization header : {}", header);
 
         if (header == null || !header.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // 1. get the token from the header
         String token = header.substring(7);
 
-        // 2. Parse the token using JwtService
         try {
-
-            // check for access token
+            // Only access tokens allowed here
             if (!jwtService.isAccessToken(token)) {
-
                 filterChain.doFilter(request, response);
                 return;
             }
 
             Jws<Claims> parse = jwtService.parseToken(token);
-
             Claims claims = parse.getPayload();
 
             String userId = claims.getSubject();
             UUID userUuid = UserHelper.parseId(userId);
-            // You can also extract other claims like email, roles, etc. if needed
 
             userRepository.findById(userUuid).ifPresent(user -> {
 
-                // Check if the user is enabled before setting authentication
                 if (user.isEnabled()) {
-                    List<GrantedAuthority> authorities = user.getRoles() == null ? List.of()
-                            : user.getRoles().stream()
-                                    .map(role -> new SimpleGrantedAuthority(role.getRoleName()))
-                                    .collect(Collectors.toList());
 
-                    // Create an Authentication object based on the user details and authorities
-                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                            user.getEmail(),
+                    //  USE User.getAuthorities() — already contains
+                    //    "ROLE_ADMIN", "ROLE_USER", "user:read", "user:write" etc.
+                    //  FIX: principal is now the User entity (implements UserDetails)
+                    UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(
+                            user,    // ← User, not user.getEmail()
                             null,
-                            authorities);
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                            user.getAuthorities());   // ← YEH KEY HAI
+
+                    authentication.setDetails(
+                        new WebAuthenticationDetailsSource().buildDetails(request));
 
                     if (SecurityContextHolder.getContext().getAuthentication() == null) {
-                        // Set the authentication in the SecurityContextHolder
                         SecurityContextHolder.getContext().setAuthentication(authentication);
                     }
                 }
-
             });
         } catch (ExpiredJwtException e) {
-
+            logger.debug("Access token expired: {}", e.getMessage());
             request.setAttribute("error", "Token Expired");
-            // Handle expired token exceptions
-            // e.printStackTrace();
         } catch (Exception e) {
-            request.setAttribute("error", "Token Expired");
-            // Handle any other exceptions
-            // e.printStackTrace();
+            logger.debug("JWT filter error: {}", e.getMessage());
+            request.setAttribute("error", "Invalid Token");
         }
 
         filterChain.doFilter(request, response);
-
     }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-
         String path = request.getRequestURI();
-
         return path.startsWith("/api/v1/auth/")
-                || path.startsWith("/swagger-ui")
-                || path.startsWith("/v3/api-docs");
+            || path.startsWith("/swagger-ui")
+            || path.startsWith("/v3/api-docs");
     }
 }

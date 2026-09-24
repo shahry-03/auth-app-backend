@@ -1,4 +1,5 @@
 package com.auth_app_backend.config;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 
 import java.util.Map;
 
@@ -27,6 +28,7 @@ import com.auth_app_backend.security.JwtAuthenticationFilter;
 import com.fasterxml.jackson.databind.ObjectMapper; // for spring boot version 3.x
 
 @Configuration
+@EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
         private JwtAuthenticationFilter jwtAuthenticationFilter;

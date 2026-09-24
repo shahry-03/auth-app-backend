@@ -1,34 +1,19 @@
 package com.auth_app_backend.entity;
 
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+
 import java.time.Instant;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+
+import jakarta.persistence.*;
+import lombok.*;
 
 @Getter
 @Setter
@@ -36,7 +21,9 @@ import lombok.Setter;
 @NoArgsConstructor
 @Builder
 @Entity
+@Table(name = "users")
 public class User implements UserDetails {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "user_id")
@@ -47,27 +34,23 @@ public class User implements UserDetails {
 
     @Column(name = "user_name", length = 500)
     private String name;
+
     private String password;
     private String image;
-    private boolean enable = true;
 
-    private Instant createdAt = Instant.now();
-    private Instant updatedAt = Instant.now();
+    @Builder.Default
+    private boolean enabled = true;
 
-    @Enumerated(EnumType.STRING)
-    private Provider provider = Provider.LOCAL;
-    private String providerId;
+    
+    @Column(updatable = false)
+    private Instant createdAt;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
-    private Set<Role> roles = new HashSet<>();
+    private Instant updatedAt;
 
     @PrePersist
     protected void onCreate() {
         Instant now = Instant.now();
-        if (createdAt == null) {
-            createdAt = now;
-        }
+        if (createdAt == null) createdAt = now;
         updatedAt = now;
     }
 
@@ -76,11 +59,51 @@ public class User implements UserDetails {
         updatedAt = Instant.now();
     }
 
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private Provider provider = Provider.LOCAL;
+
+    private String providerId;
+
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+        name = "user_roles",
+        joinColumns = @JoinColumn(name = "user_id"),
+        inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    @Builder.Default
+    private Set<Role> roles = new HashSet<>();
+
+    /**
+     * Returns combined authorities — BOTH roles and permissions.
+     *
+     * Role authorities:  "ROLE_ADMIN", "ROLE_USER"
+     * Permission authorities: "user:read", "user:write", "profile:read"
+     *
+     * This enables both:
+     *   - hasRole('ADMIN')        → checks "ROLE_ADMIN"
+     *   - hasAuthority('user:read') → checks "user:read"
+     */
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        List<SimpleGrantedAuthority> authorities = roles.stream()
-                .map(role -> new SimpleGrantedAuthority(role.getRoleName()))
-                .toList();
+        if (roles == null) return Collections.emptyList();
+
+        Set<GrantedAuthority> authorities = new HashSet<>();
+
+        for (Role role : roles) {
+            // Role authority: "ROLE_ADMIN"
+            if (role.getRoleName() != null) {
+                authorities.add(new SimpleGrantedAuthority("ROLE_" + role.getRoleName()));
+            }
+
+            // Permission authorities: "user:read", "user:write"
+            if (role.getPermissions() != null) {
+                role.getPermissions().forEach(permission ->
+                    authorities.add(new SimpleGrantedAuthority(permission.getName()))
+                );
+            }
+        }
+
         return authorities;
     }
 
@@ -90,23 +113,14 @@ public class User implements UserDetails {
     }
 
     @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
+    public boolean isAccountNonExpired() { return true; }
 
     @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
+    public boolean isAccountNonLocked() { return true; }
 
     @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
+    public boolean isCredentialsNonExpired() { return true; }
 
     @Override
-    public boolean isEnabled() {
-        return this.enable;
-    }
-
+    public boolean isEnabled() { return this.enabled; }
 }
