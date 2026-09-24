@@ -44,7 +44,9 @@ class AuthIntegrationTest {
         registry.add("spring.datasource.url", mysql::getJdbcUrl);
         registry.add("spring.datasource.username", mysql::getUsername);
         registry.add("spring.datasource.password", mysql::getPassword);
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
+        registry.add("spring.jpa.hibernate.ddl-auto", () -> "validate");
+        registry.add("spring.flyway.enabled", () -> "true");
+        registry.add("spring.flyway.baseline-on-migrate", () -> "false");
         registry.add("universal.auth.jwt.secret",
             () -> "integration-test-secret-key-that-is-at-least-64-bytes-long-for-testing-only-x");
         registry.add("universal.auth.jwt.expiration", () -> "3600000");

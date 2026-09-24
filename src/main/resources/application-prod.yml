@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+  
+  jpa:
+    hibernate:
+      ddl-auto: validate       # Flyway controls schema
+    show-sql: false
+  
+  flyway:
+    enabled: true
+    baseline-on-migrate: false  # Production me nahi
+    clean-disabled: true        # Safety — kabhi clean nahi
+    validate-on-migrate: true
+
+logging:
+  level:
+    root: WARN
+    com.auth_app_backend: INFO
