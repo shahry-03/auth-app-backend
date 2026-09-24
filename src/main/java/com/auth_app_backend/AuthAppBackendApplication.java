@@ -6,10 +6,12 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 
 import com.auth_app_backend.config.UniversalAuthProperties;
 import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableConfigurationProperties(UniversalAuthProperties.class)
 @EnableAsync
+@EnableScheduling
 public class AuthAppBackendApplication {
 
     public static void main(String[] args) {

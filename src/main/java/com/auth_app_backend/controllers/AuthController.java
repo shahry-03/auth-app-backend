@@ -26,6 +26,7 @@ import com.auth_app_backend.dto.request.VerifyEmailRequest;
 import com.auth_app_backend.dto.request.ResendVerificationRequest;
 import com.auth_app_backend.dto.request.ForgotPasswordRequest;
 import com.auth_app_backend.dto.request.ResetPasswordRequest;
+import com.auth_app_backend.ratelimit.RateLimit;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -41,6 +42,7 @@ public class AuthController {
     //  REGISTER
     // ─────────────────────────────────────────────
     @PostMapping("/register")
+    @RateLimit(name = "register", capacity = 3, refillTokens = 3, refillPeriod = 1, refillUnit = RateLimit.RefillUnit.HOURS)
     public ResponseEntity<ApiResponse<UserResponse>> register(
             @Valid @RequestBody RegisterRequest request) {
 
@@ -54,6 +56,7 @@ public class AuthController {
     //  LOGIN
     // ─────────────────────────────────────────────
     @PostMapping("/login")
+    @RateLimit(name = "login", capacity = 5, refillTokens = 5, refillPeriod = 15)
     public ResponseEntity<ApiResponse<TokenResponse>> login(
             @Valid @RequestBody LoginRequest request,
             HttpServletResponse response) {
@@ -69,6 +72,7 @@ public class AuthController {
     //  REFRESH
     // ─────────────────────────────────────────────
     @PostMapping("/refresh")
+    @RateLimit(name = "refresh", capacity = 30, refillTokens = 30, refillPeriod = 1, refillUnit = RateLimit.RefillUnit.MINUTES)
     public ResponseEntity<ApiResponse<TokenResponse>> refresh(
             @RequestBody(required = false) RefreshTokenRequest body,
             HttpServletRequest request,
@@ -123,6 +127,7 @@ public class AuthController {
     }
 
     @PostMapping("/resend-verification")
+    @RateLimit(name = "resend-verification", capacity = 3, refillTokens = 3, refillPeriod = 1, refillUnit = RateLimit.RefillUnit.HOURS)
     public ResponseEntity<ApiResponse<Void>> resendVerification(
             @Valid @RequestBody ResendVerificationRequest request) {
         authService.resendVerificationEmail(request.email());
@@ -141,6 +146,7 @@ public class AuthController {
      * Always returns 200 (does not reveal if email exists).
      */
     @PostMapping("/forgot-password")
+    @RateLimit(name = "forgot-password", capacity = 5, refillTokens = 5, refillPeriod = 1, refillUnit = RateLimit.RefillUnit.HOURS)
     public ResponseEntity<ApiResponse<Void>> forgotPassword(
             @Valid @RequestBody ForgotPasswordRequest request) {
         authService.forgotPassword(request);

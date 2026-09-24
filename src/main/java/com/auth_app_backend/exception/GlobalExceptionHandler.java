@@ -18,6 +18,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.auth_app_backend.exception.EmailNotVerifiedException;
+import com.auth_app_backend.exception.RateLimitExceededException;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -222,6 +223,25 @@ public class GlobalExceptionHandler {
             request.getRequestURI());
 
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+
+
+    // ─── 429 Too Many Requests ─────────────────────────────────────
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<ApiError> handleRateLimit(
+            RateLimitExceededException ex,
+            HttpServletRequest request) {
+
+        ApiError error = ApiError.of(
+            HttpStatus.TOO_MANY_REQUESTS.value(),
+            "Too Many Requests",
+            ex.getMessage(),
+            request.getRequestURI());
+
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+            .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+            .body(error);
     }
 
 
