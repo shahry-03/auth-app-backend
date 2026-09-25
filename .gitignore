@@ -40,3 +40,5 @@ src/main/resources/application-prod.yaml
 
 # Ignore .env file 
 .env
+.env.*
+!.env.example

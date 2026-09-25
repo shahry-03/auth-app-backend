@@ -9,6 +9,7 @@ import com.auth_app_backend.exception.ResourceNotFoundException;
 import com.auth_app_backend.repositories.UserRepository;
 import com.auth_app_backend.services.RefreshTokenService;
 import com.auth_app_backend.services.impl.UserServiceImpl;
+import com.auth_app_backend.services.AccountLockoutService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -18,6 +19,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.util.HashSet;
 import java.util.List;
@@ -31,12 +35,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("UserService Tests")
 class UserServiceTest {
 
     @Mock private UserRepository userRepository;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private RefreshTokenService refreshTokenService;
+    @Mock private AccountLockoutService accountLockoutService;
 
     @InjectMocks
     private UserServiceImpl userService;

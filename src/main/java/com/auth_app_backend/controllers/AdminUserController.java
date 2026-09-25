@@ -73,4 +73,14 @@ public class AdminUserController {
         userService.deleteUser(userId);
         return ResponseEntity.ok(ApiResponse.success("User deleted"));
     }
+
+    /**
+     * Manually unlock a locked user account (admin action).
+     */
+    @PostMapping("/{userId}/unlock")
+    @PreAuthorize("hasAuthority('user:write')")
+    public ResponseEntity<ApiResponse<Void>> unlockUser(@PathVariable UUID userId) {
+        userService.unlockUser(userId);
+        return ResponseEntity.ok(ApiResponse.success("User account unlocked"));
+    }
 }

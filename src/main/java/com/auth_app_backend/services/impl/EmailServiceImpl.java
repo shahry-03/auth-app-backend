@@ -95,4 +95,27 @@ public class EmailServiceImpl implements EmailService {
             // Don't rethrow — email failure shouldn't break the flow
         }
     }
+
+
+    @Override
+    @Async
+    public void sendAccountLockedEmail(String toEmail, String userName,
+                                        int maxAttempts, int lockDurationMinutes) {
+        Context ctx = new Context();
+        ctx.setVariable("userName", userName);
+        ctx.setVariable("maxAttempts", maxAttempts);
+        ctx.setVariable("lockDurationMinutes", lockDurationMinutes);
+        ctx.setVariable("resetPasswordLink", frontendBaseUrl + "/forgot-password");
+        sendHtmlEmail(toEmail, "⚠️ Your account has been locked",
+            "email/account-locked", ctx);
+    }
+
+    @Override
+    @Async
+    public void sendAccountUnlockedEmail(String toEmail, String userName) {
+        Context ctx = new Context();
+        ctx.setVariable("userName", userName);
+        sendHtmlEmail(toEmail, "Your account has been unlocked",
+            "email/account-unlocked", ctx);
+    }
 }

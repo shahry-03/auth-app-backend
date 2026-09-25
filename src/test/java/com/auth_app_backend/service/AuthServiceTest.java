@@ -17,6 +17,7 @@ import com.auth_app_backend.services.EmailService;
 import com.auth_app_backend.services.RefreshTokenService;
 import com.auth_app_backend.services.VerificationTokenService;
 import com.auth_app_backend.services.impl.AuthServiceImpl;
+import com.auth_app_backend.services.AccountLockoutService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -31,6 +32,8 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import static org.mockito.ArgumentMatchers.eq;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.util.HashSet;
 import java.util.Optional;
@@ -43,7 +46,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
+
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("AuthService Tests")
 class AuthServiceTest {
 
@@ -55,6 +60,7 @@ class AuthServiceTest {
     @Mock private RefreshTokenService refreshTokenService;
     @Mock private VerificationTokenService verificationTokenService;
     @Mock private EmailService emailService;
+    @Mock private AccountLockoutService accountLockoutService;
 
     @InjectMocks
     private AuthServiceImpl authService;

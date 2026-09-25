@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"></head>
+<body style="font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px;">
+    <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; padding: 40px;">
+        <h2 style="color: #e74c3c;">⚠️ Account Locked</h2>
+        <p style="color: #555; line-height: 1.6;">
+            Hi <span th:text="${userName}">User</span>,
+        </p>
+        <p style="color: #555; line-height: 1.6;">
+            Your account has been temporarily locked due to
+            <strong th:text="${maxAttempts}">5</strong> failed login attempts.
+        </p>
+        <p style="color: #e74c3c; font-weight: bold; line-height: 1.6;">
+            ⚠️ If this wasn't you, someone may be trying to access your account.
+            Please reset your password immediately.
+        </p>
+        <p style="color: #555; line-height: 1.6;">
+            The account will automatically unlock in
+            <strong th:text="${lockDurationMinutes}">15</strong> minutes.
+        </p>
+        <p style="text-align: center; margin: 40px 0;">
+            <a th:href="${resetPasswordLink}"
+               style="background-color: #e74c3c; color: white; padding: 14px 32px;
+                      text-decoration: none; border-radius: 4px; display: inline-block; font-weight: bold;">
+                Reset Password
+            </a>
+        </p>
+        <p style="color: #aaa; font-size: 12px;">— The Universal Auth Team</p>
+    </div>
+</body>
+</html>

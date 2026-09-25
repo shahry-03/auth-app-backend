@@ -22,4 +22,6 @@ public interface UserService {
     void changePassword(UUID userId, ChangePasswordRequest request);
 
     void enableUser(UUID userId, boolean enabled);
+
+    void unlockUser(UUID userId);
 }

@@ -13,6 +13,13 @@ app:
   rate-limit:
     enabled: false             # ⚡ Disable rate limiting in tests
     cleanup-interval-minutes: 10
+  security:
+    account-lockout:
+      enabled: true            # ← Test me enable (lockout test karenge)
+      max-failed-attempts: 5
+      lockout-duration-minutes: 15
+      reset-counter-after-minutes: 30
+      notify-on-lock: false    # Test me email skip
   frontend:
     base-url: http://localhost:3000
   mail:

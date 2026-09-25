@@ -9,4 +9,8 @@ public interface EmailService {
     void sendWelcomeEmail(String toEmail, String userName);
 
     void sendPasswordChangedEmail(String toEmail, String userName);
+
+    void sendAccountLockedEmail(String toEmail, String userName, int maxAttempts, int lockDurationMinutes);
+
+    void sendAccountUnlockedEmail(String toEmail, String userName);
 }

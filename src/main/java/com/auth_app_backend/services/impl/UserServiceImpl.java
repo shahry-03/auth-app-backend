@@ -13,6 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.auth_app_backend.services.RefreshTokenService;
+import com.auth_app_backend.services.AccountLockoutService;
 
 import java.util.List;
 import java.util.UUID;
@@ -24,6 +25,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
+    private final AccountLockoutService accountLockoutService;
 
     @Override
     @Transactional(readOnly = true)
@@ -91,6 +93,9 @@ public class UserServiceImpl implements UserService {
         user.setPassword(passwordEncoder.encode(request.newPassword()));
         userRepository.saveAndFlush(user);
 
+        // ⚡ Reset failed login counter (user proved identity by changing password)
+        accountLockoutService.resetFailedAttempts(user);
+
         // SECURITY: Revoke all refresh tokens
         refreshTokenService.revokeAllForUser(userId);
     }
@@ -103,5 +108,19 @@ public class UserServiceImpl implements UserService {
             .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
         user.setEnabled(enabled);
         userRepository.saveAndFlush(user);
+    }
+
+
+    @Override
+    @Transactional
+    public void unlockUser(UUID userId) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+
+        if (user.getLockedUntil() == null) {
+            throw new IllegalStateException("Account is not locked");
+        }
+
+        accountLockoutService.unlockAccount(user);
     }
 }

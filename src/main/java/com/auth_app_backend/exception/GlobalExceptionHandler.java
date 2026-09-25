@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.auth_app_backend.exception.EmailNotVerifiedException;
 import com.auth_app_backend.exception.RateLimitExceededException;
+import com.auth_app_backend.exception.AccountLockedException;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -241,6 +242,27 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
             .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+            .body(error);
+    }
+
+
+    // ═══════════════════════════════════════════════════════════════
+    //  423 LOCKED — ACCOUNT LOCKOUT
+    // ═══════════════════════════════════════════════════════════════
+
+    @ExceptionHandler(AccountLockedException.class)
+    public ResponseEntity<ApiError> handleAccountLocked(
+            AccountLockedException ex,
+            HttpServletRequest request) {
+
+        ApiError error = ApiError.of(
+            HttpStatus.LOCKED.value(),
+            "Account Locked",
+            ex.getMessage(),
+            request.getRequestURI());
+
+        return ResponseEntity.status(HttpStatus.LOCKED)
+            .header("X-Account-Locked-Until", ex.getLockedUntil().toString())
             .body(error);
     }
 

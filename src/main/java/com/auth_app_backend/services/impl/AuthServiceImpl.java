@@ -16,6 +16,7 @@ import com.auth_app_backend.repositories.UserRepository;
 import com.auth_app_backend.security.JwtService;
 import com.auth_app_backend.services.AuthService;
 import com.auth_app_backend.services.RefreshTokenService;
+import com.auth_app_backend.services.AccountLockoutService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -48,6 +49,7 @@ public class AuthServiceImpl implements AuthService {
     private final RefreshTokenService refreshTokenService;
     private final VerificationTokenService verificationTokenService;
     private final EmailService emailService;
+    private final AccountLockoutService accountLockoutService;
 
     // ============================================================
     //  REGISTER
@@ -100,45 +102,57 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public TokenResponse login(LoginRequest request) {
 
-        // 1. Authenticate via Spring Security (password check)
+        // 1. ⚡ Load user + CHECK ACCOUNT LOCK (before anything else)
+        User user = userRepository.findByEmail(request.email())
+            .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
+
+        accountLockoutService.checkAccountLocked(user);
+
+        // 2. Authenticate via Spring Security (password check)
         try {
             authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                     request.email(), request.password()));
         } catch (Exception e) {
+            // ⚡ RECORD FAILED ATTEMPT
+            boolean justLocked = accountLockoutService.recordFailedAttempt(user);
+
+            if (justLocked) {
+                log.warn("Account locked after failed attempt for user: {}", user.getId());
+                // Optional: send lock notification email
+                // emailService.sendAccountLockedEmail(user.getEmail(), user.getName(), 5, 15);
+            }
             throw new BadCredentialsException("Invalid email or password");
         }
 
-        // 2. Load user
-        User user = userRepository.findByEmail(request.email())
-            .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
+        // 3. ⚡ RESET FAILED COUNTER (successful password)
+        accountLockoutService.resetFailedAttempts(user);
 
-        // 3. ⚡ STRICT: Email verification check (BEFORE enabled check)
+        // 4. STRICT: Email verification check
         if (!user.isEmailVerified()) {
             throw new EmailNotVerifiedException(
                 "Please verify your email address. Check your inbox for the verification link.");
         }
 
-        // 4. Account enabled check (admin-level disable)
+        // 5. Account enabled check (admin-level disable)
         if (!user.isEnabled()) {
             throw new DisabledException("User is disabled");
         }
 
-        // 5. ⚡ 2FA check — if enabled, return temp token instead of full tokens
+        // 6. ⚡ 2FA check — if enabled, return temp token instead of full tokens
         if (user.isTwoFactorEnabled()) {
             String tempToken = jwtService.generateTwoFactorTempToken(user);
             return TokenResponse.requiresTwoFactor(tempToken);
         }
 
-
-        // 6. Create refresh token (persisted with jti)
+        // 7. Create refresh token (persisted with jti)
         RefreshToken refreshToken = refreshTokenService.createForUser(user);
 
-        // 7. Generate JWT access + refresh tokens
+        // 8. Generate JWT access + refresh tokens
         String accessToken = jwtService.generateAccessToken(user);
         String refreshTokenValue = jwtService.generateRefreshToken(user, refreshToken.getJti());
 
-        // 7. Build response
+        // 9. Build response
         return TokenResponse.of(
             accessToken,
             refreshTokenValue,
@@ -266,7 +280,10 @@ public class AuthServiceImpl implements AuthService {
         // 4. Mark token as used
         verificationTokenService.markUsed(token);
 
-        // 5. ⚡ SECURITY: Revoke ALL refresh tokens (force re-login everywhere)
+        // ⚡ YEH MISSING HAI — ADD KARO
+        accountLockoutService.resetFailedAttempts(user);
+
+        // 5. SECURITY: Revoke ALL refresh tokens (force re-login everywhere)
         refreshTokenService.revokeAllForUser(user.getId());
 
         // 6. Send confirmation email (async)

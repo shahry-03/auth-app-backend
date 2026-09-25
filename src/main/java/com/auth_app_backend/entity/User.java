@@ -52,6 +52,17 @@ public class User implements UserDetails {
     @Column(name = "two_factor_enabled", nullable = false)
     private boolean twoFactorEnabled = false;
 
+
+    @Builder.Default
+    @Column(name = "failed_login_attempts", nullable = false)
+    private int failedLoginAttempts = 0;
+
+    @Column(name = "locked_until")
+    private Instant lockedUntil;
+
+    @Column(name = "last_failed_login")
+    private Instant lastFailedLogin;
+
     
     @Column(updatable = false)
     private Instant createdAt;
@@ -134,4 +145,19 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() { return this.enabled; }
+
+
+    /**
+    * Check if account is currently locked.
+    */
+    public boolean isLocked() {
+        return lockedUntil != null && Instant.now().isBefore(lockedUntil);
+    }
+
+    /**
+    * Check if lock has expired (but not cleared).
+    */
+    public boolean isLockExpired() {
+        return lockedUntil != null && Instant.now().isAfter(lockedUntil);
+    }
 }
