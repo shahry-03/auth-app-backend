@@ -1,8 +1,18 @@
 spring:
   jpa:
     hibernate:
-      ddl-auto: create-drop     # Test DB — clean slate har run pe
-    show-sql: false             # Test logs clean rakho
+      ddl-auto: validate       # ← CHANGE: Flyway controls schema
+    show-sql: false
+
+  flyway:
+    enabled: true              # ← ADD: Enable Flyway in tests
+    baseline-on-migrate: false # ← ADD: Fresh container, no baseline
+    clean-disabled: true
+
+app:
+  rate-limit:
+    enabled: false             # ⚡ Disable rate limiting in tests
+    cleanup-interval-minutes: 10
 
 universal:
   auth:
@@ -12,7 +22,7 @@ universal:
       refresh-token-expiration: 604800000
       issuer: universal-auth-test
     oauth2:
-      enabled: false             # OAuth2 tests me simulate karenge
+      enabled: false
     cookie:
       secure: false
       http-only: true

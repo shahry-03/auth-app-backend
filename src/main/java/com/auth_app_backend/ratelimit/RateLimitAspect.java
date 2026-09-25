@@ -10,6 +10,7 @@ import org.aspectj.lang.annotation.Aspect;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.beans.factory.annotation.Value;
 
 @Slf4j
 @Aspect
@@ -19,9 +20,18 @@ public class RateLimitAspect {
 
     private final RateLimitService rateLimitService;
 
+    @Value("${app.rate-limit.enabled:true}")
+    private boolean rateLimitEnabled;
+
     @Around("@annotation(rateLimit)")
     public Object applyRateLimit(ProceedingJoinPoint joinPoint, RateLimit rateLimit) throws Throwable {
 
+        // ⚡ Skip entirely if disabled (e.g., in tests)
+        if (!rateLimitEnabled) {
+            return joinPoint.proceed();
+        }
+
+        
         String clientKey = resolveClientKey();
 
         boolean allowed = rateLimitService.tryConsume(

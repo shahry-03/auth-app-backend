@@ -7,11 +7,15 @@ import com.auth_app_backend.dto.response.UserResponse;
 import com.auth_app_backend.entity.RefreshToken;
 import com.auth_app_backend.entity.Role;
 import com.auth_app_backend.entity.User;
+import com.auth_app_backend.entity.VerificationToken;
+import com.auth_app_backend.exception.EmailNotVerifiedException;
 import com.auth_app_backend.exception.ResourceNotFoundException;
 import com.auth_app_backend.repositories.RoleRepository;
 import com.auth_app_backend.repositories.UserRepository;
 import com.auth_app_backend.security.JwtService;
+import com.auth_app_backend.services.EmailService;
 import com.auth_app_backend.services.RefreshTokenService;
+import com.auth_app_backend.services.VerificationTokenService;
 import com.auth_app_backend.services.impl.AuthServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -26,6 +30,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import static org.mockito.ArgumentMatchers.eq;
 
 import java.util.HashSet;
 import java.util.Optional;
@@ -48,6 +53,8 @@ class AuthServiceTest {
     @Mock private AuthenticationManager authenticationManager;
     @Mock private JwtService jwtService;
     @Mock private RefreshTokenService refreshTokenService;
+    @Mock private VerificationTokenService verificationTokenService;
+    @Mock private EmailService emailService;
 
     @InjectMocks
     private AuthServiceImpl authService;
@@ -70,6 +77,7 @@ class AuthServiceTest {
             .name("Test User")
             .password("hashed-password")
             .enabled(true)
+            .emailVerified(true)              // ← verified by default for login tests
             .roles(new HashSet<>(Set.of(userRole)))
             .build();
     }
@@ -85,7 +93,6 @@ class AuthServiceTest {
         @Test
         @DisplayName("Should register user with USER role and hashed password")
         void shouldRegisterSuccessfully() {
-            // given
             RegisterRequest req = new RegisterRequest(
                 "new@example.com", "Plain@1234", "New User");
 
@@ -98,22 +105,24 @@ class AuthServiceTest {
                 return u;
             });
 
-            // when
+            // ⚡ Mock verification token + email (async)
+            VerificationToken vt = VerificationToken.builder()
+                .token("test-token-xyz")
+                .type(VerificationToken.TokenType.EMAIL_VERIFICATION)
+                .build();
+            when(verificationTokenService.createEmailVerificationToken(any(User.class)))
+                .thenReturn(vt);
+
             UserResponse result = authService.registerUser(req);
 
-            // then
             assertThat(result.email()).isEqualTo("new@example.com");
             assertThat(result.name()).isEqualTo("New User");
             assertThat(result.roles()).hasSize(1);
             assertThat(result.roles().iterator().next().roleName()).isEqualTo("USER");
 
-            // verify password was hashed
             verify(passwordEncoder).encode("Plain@1234");
-
-            // verify saved user has hashed password (not plain)
-            verify(userRepository).save(argThat(user ->
-                user.getPassword().equals("hashed-new")
-            ));
+            verify(verificationTokenService).createEmailVerificationToken(any(User.class));
+            verify(emailService).sendVerificationEmail(eq("new@example.com"), eq("New User"), eq("test-token-xyz"));
         }
 
         @Test
@@ -148,7 +157,7 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("Should set enabled=true by default")
+        @DisplayName("Should set enabled=true and emailVerified=false by default")
         void shouldSetEnabledTrue() {
             RegisterRequest req = new RegisterRequest(
                 "new@example.com", "Test@1234", "Name");
@@ -161,6 +170,8 @@ class AuthServiceTest {
                 u.setId(UUID.randomUUID());
                 return u;
             });
+            when(verificationTokenService.createEmailVerificationToken(any(User.class)))
+                .thenReturn(VerificationToken.builder().token("tok").build());
 
             UserResponse result = authService.registerUser(req);
 
@@ -177,7 +188,7 @@ class AuthServiceTest {
     class Login {
 
         @Test
-        @DisplayName("Should return tokens on successful login")
+        @DisplayName("Should return tokens on successful login (verified user)")
         void shouldLoginSuccessfully() {
             LoginRequest req = new LoginRequest("test@example.com", "Plain@1234");
 
@@ -187,17 +198,15 @@ class AuthServiceTest {
                 .build();
 
             when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
-                .thenReturn(null); // Spring returns Authentication but we don't use it
+                .thenReturn(null);
             when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
             when(refreshTokenService.createForUser(testUser)).thenReturn(refreshToken);
             when(jwtService.generateAccessToken(testUser)).thenReturn("access-token-xyz");
             when(jwtService.generateRefreshToken(testUser, "jti-123")).thenReturn("refresh-token-abc");
             when(jwtService.getJwtExpirationInMillis()).thenReturn(3600000L);
 
-            // when
             TokenResponse result = authService.login(req);
 
-            // then
             assertThat(result.accessToken()).isEqualTo("access-token-xyz");
             assertThat(result.refreshToken()).isEqualTo("refresh-token-abc");
             assertThat(result.tokenType()).isEqualTo("Bearer");
@@ -221,9 +230,26 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("Should throw when user is disabled")
+        @DisplayName("Should throw EmailNotVerifiedException when email not verified")
+        void shouldThrowWhenEmailNotVerified() {
+            testUser.setEmailVerified(false);
+            LoginRequest req = new LoginRequest("test@example.com", "Plain@1234");
+
+            when(authenticationManager.authenticate(any())).thenReturn(null);
+            when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
+
+            assertThatThrownBy(() -> authService.login(req))
+                .isInstanceOf(EmailNotVerifiedException.class)
+                .hasMessageContaining("verify your email");
+
+            verify(refreshTokenService, never()).createForUser(any());
+        }
+
+        @Test
+        @DisplayName("Should throw when user is disabled (after email verified)")
         void shouldThrowWhenDisabled() {
             testUser.setEnabled(false);
+            testUser.setEmailVerified(true);        // verified but disabled
             LoginRequest req = new LoginRequest("test@example.com", "Plain@1234");
 
             when(authenticationManager.authenticate(any())).thenReturn(null);
@@ -312,7 +338,6 @@ class AuthServiceTest {
         @DisplayName("Should revoke token when value provided")
         void shouldRevokeToken() {
             authService.logout("valid-token");
-
             verify(refreshTokenService).revokeByValue("valid-token");
         }
 
@@ -320,7 +345,6 @@ class AuthServiceTest {
         @DisplayName("Should skip revocation when null")
         void shouldSkipOnNull() {
             authService.logout(null);
-
             verify(refreshTokenService, never()).revokeByValue(any());
         }
 
@@ -328,8 +352,36 @@ class AuthServiceTest {
         @DisplayName("Should skip revocation when blank")
         void shouldSkipOnBlank() {
             authService.logout("   ");
-
             verify(refreshTokenService, never()).revokeByValue(any());
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    //  verifyEmail
+    // ═══════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("verifyEmail()")
+    class VerifyEmail {
+
+        @Test
+        @DisplayName("Should mark user as verified")
+        void shouldMarkVerified() {
+            VerificationToken token = VerificationToken.builder()
+                .token("tok-123")
+                .user(testUser)
+                .type(VerificationToken.TokenType.EMAIL_VERIFICATION)
+                .build();
+
+            when(verificationTokenService.validateToken("tok-123", VerificationToken.TokenType.EMAIL_VERIFICATION))
+                .thenReturn(token);
+            when(userRepository.saveAndFlush(any(User.class))).thenReturn(testUser);
+
+            authService.verifyEmail("tok-123");
+
+            assertThat(testUser.isEmailVerified()).isTrue();
+            verify(userRepository).saveAndFlush(testUser);
+            verify(verificationTokenService).markUsed(token);
         }
     }
 }

@@ -6,6 +6,7 @@ import com.auth_app_backend.entity.Role;
 import com.auth_app_backend.repositories.RefreshTokenRepository;
 import com.auth_app_backend.repositories.RoleRepository;
 import com.auth_app_backend.repositories.UserRepository;
+import com.auth_app_backend.services.EmailService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.*;
@@ -61,17 +63,17 @@ class AuthIntegrationTest {
     @Autowired private RoleRepository roleRepository;
     @Autowired private RefreshTokenRepository refreshTokenRepository;
 
+    @MockBean private EmailService emailService;
+
     private String baseUrl;
 
     @BeforeEach
     void setUp() {
-        // ⚡ Use Apache HttpClient5 — handles 4xx without streaming issues
         restTemplate.getRestTemplate().setRequestFactory(
             new HttpComponentsClientHttpRequestFactory());
 
         baseUrl = "http://localhost:" + port;
 
-        // ⚡ Delete refresh_tokens FIRST (FK constraint), then users
         refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
     }
@@ -102,9 +104,21 @@ class AuthIntegrationTest {
         return json.path("data").path(field).asText();
     }
 
+    /**
+     * Mark user as verified directly in DB (simulates email click).
+     */
+    private void markUserVerified(String email) {
+        var user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new AssertionError("User not found: " + email));
+        user.setEmailVerified(true);
+        userRepository.saveAndFlush(user);
+    }
+
     private void assignRoleToUser(String email, String roleName) {
-        var user = userRepository.findByEmail(email).orElseThrow();
-        Role role = roleRepository.findByRoleName(roleName).orElseThrow();
+        var user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new AssertionError("User not found: " + email));
+        Role role = roleRepository.findByRoleName(roleName)
+            .orElseThrow(() -> new AssertionError("Role not found: " + roleName));
         user.getRoles().add(role);
         userRepository.saveAndFlush(user);
     }
@@ -118,17 +132,23 @@ class AuthIntegrationTest {
     class FullAuthFlow {
 
         @Test
-        @DisplayName("Register → Login → Access /me with token")
+        @DisplayName("Register → Verify → Login → Access /me")
         void registerLoginAccessMe() throws Exception {
+            // 1. Register
             ResponseEntity<String> regRes = register("flow@test.com", "Test@1234", "Flow User");
             assertThat(regRes.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
+            // 2. Mark verified (simulating email click)
+            markUserVerified("flow@test.com");
+
+            // 3. Login — should succeed
             ResponseEntity<String> loginRes = login("flow@test.com", "Test@1234");
             assertThat(loginRes.getStatusCode()).isEqualTo(HttpStatus.OK);
 
             String accessToken = extractToken(loginRes, "accessToken");
             assertThat(accessToken).isNotBlank();
 
+            // 4. Access /me
             HttpEntity<Void> request = new HttpEntity<>(bearerHeaders(accessToken));
             ResponseEntity<String> meRes = restTemplate.exchange(
                 baseUrl + "/api/v1/users/me", HttpMethod.GET, request, String.class);
@@ -151,13 +171,27 @@ class AuthIntegrationTest {
         @DisplayName("Login with wrong password should return 401")
         void wrongPassword() {
             register("wrong@test.com", "Test@1234", "User");
+            // Note: password check happens BEFORE email verification check
             ResponseEntity<String> res = login("wrong@test.com", "Wrong@5678");
             assertThat(res.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        }
+
+        @Test
+        @DisplayName("Login without verification should return 403")
+        void loginWithoutVerificationReturns403() throws Exception {
+            register("unverified@test.com", "Test@1234", "User");
+            // Don't verify — try to login
+            ResponseEntity<String> res = login("unverified@test.com", "Test@1234");
+            assertThat(res.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+
+            // Check error message
+            JsonNode json = parseBody(res);
+            assertThat(json.path("error").asText()).isEqualTo("Email Not Verified");
         }
     }
 
     // ═══════════════════════════════════════════════════════════
-    //  TEST 2 — RBAC Enforcement (MOST IMPORTANT)
+    //  TEST 2 — RBAC Enforcement
     // ═══════════════════════════════════════════════════════════
 
     @Nested
@@ -168,7 +202,10 @@ class AuthIntegrationTest {
         @DisplayName("USER accessing /admin/users should get 403")
         void userCannotAccessAdmin() throws Exception {
             register("user@test.com", "Test@1234", "User");
+            markUserVerified("user@test.com");
+
             ResponseEntity<String> loginRes = login("user@test.com", "Test@1234");
+            assertThat(loginRes.getStatusCode()).isEqualTo(HttpStatus.OK);
             String token = extractToken(loginRes, "accessToken");
 
             HttpEntity<Void> request = new HttpEntity<>(bearerHeaders(token));
@@ -182,8 +219,11 @@ class AuthIntegrationTest {
         @DisplayName("ADMIN accessing /admin/users should get 200")
         void adminCanAccessAdmin() throws Exception {
             register("admin@test.com", "Test@1234", "Admin");
+            markUserVerified("admin@test.com");
             assignRoleToUser("admin@test.com", "ADMIN");
+
             ResponseEntity<String> loginRes = login("admin@test.com", "Test@1234");
+            assertThat(loginRes.getStatusCode()).isEqualTo(HttpStatus.OK);
             String token = extractToken(loginRes, "accessToken");
 
             HttpEntity<Void> request = new HttpEntity<>(bearerHeaders(token));
@@ -215,7 +255,10 @@ class AuthIntegrationTest {
         @DisplayName("Password change → old fails, new works")
         void passwordChange() throws Exception {
             register("pwd@test.com", "Old@1234", "User");
+            markUserVerified("pwd@test.com");
+
             ResponseEntity<String> loginRes = login("pwd@test.com", "Old@1234");
+            assertThat(loginRes.getStatusCode()).isEqualTo(HttpStatus.OK);
             String token = extractToken(loginRes, "accessToken");
 
             String changeBody = """
@@ -228,8 +271,11 @@ class AuthIntegrationTest {
 
             assertThat(changeRes.getStatusCode()).isEqualTo(HttpStatus.OK);
 
+            // Old password should fail
             assertThat(login("pwd@test.com", "Old@1234").getStatusCode())
                 .isEqualTo(HttpStatus.UNAUTHORIZED);
+
+            // New password should work
             assertThat(login("pwd@test.com", "New@5678").getStatusCode())
                 .isEqualTo(HttpStatus.OK);
         }
@@ -238,6 +284,8 @@ class AuthIntegrationTest {
         @DisplayName("Wrong current password → 400")
         void wrongCurrentPassword() throws Exception {
             register("wrong2@test.com", "Old@1234", "User");
+            markUserVerified("wrong2@test.com");
+
             String token = extractToken(login("wrong2@test.com", "Old@1234"), "accessToken");
 
             String changeBody = """
@@ -265,7 +313,7 @@ class AuthIntegrationTest {
             baseUrl + "/api/v1/auth/register", bad, String.class);
 
         assertThat(res.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        JsonNode json = objectMapper.readTree(res.getBody());
+        JsonNode json = parseBody(res);
         assertThat(json.path("fieldErrors").has("email")).isTrue();
     }
 
@@ -278,7 +326,15 @@ class AuthIntegrationTest {
             baseUrl + "/api/v1/auth/register", bad, String.class);
 
         assertThat(res.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        JsonNode json = objectMapper.readTree(res.getBody());
+        JsonNode json = parseBody(res);
         assertThat(json.path("fieldErrors").has("password")).isTrue();
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    //  HELPER — Parse JSON safely
+    // ═══════════════════════════════════════════════════════════
+
+    private JsonNode parseBody(ResponseEntity<String> response) throws Exception {
+        return objectMapper.readTree(response.getBody());
     }
 }
