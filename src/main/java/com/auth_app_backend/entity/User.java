@@ -45,6 +45,13 @@ public class User implements UserDetails {
     @Column(name = "email_verified", nullable = false)
     private boolean emailVerified = false;
 
+    @Column(name = "totp_secret", length = 255)
+    private String totpSecret;
+
+    @Builder.Default
+    @Column(name = "two_factor_enabled", nullable = false)
+    private boolean twoFactorEnabled = false;
+
     
     @Column(updatable = false)
     private Instant createdAt;

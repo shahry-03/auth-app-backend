@@ -10,7 +10,8 @@ public class AppConstants {
         "/api/v1/auth/verify-email",           
         "/api/v1/auth/resend-verification",    
         "/api/v1/auth/forgot-password",        
-        "/api/v1/auth/reset-password",         
+        "/api/v1/auth/reset-password",
+        "/api/v1/auth/2fa/verify",        // ← ADD (temp-token protected)         
         
         // Dev-only test endpoints
         "/dev/email/**",

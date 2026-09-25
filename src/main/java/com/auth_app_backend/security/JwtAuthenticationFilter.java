@@ -93,7 +93,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return path.startsWith("/api/v1/auth/")
+
+        // Skip JWT processing only for PUBLIC auth endpoints
+        // (Note: 2FA setup/enable/disable/status are NOT in this list — they need auth)
+        return path.equals("/api/v1/auth/register")
+            || path.equals("/api/v1/auth/login")
+            || path.equals("/api/v1/auth/refresh")
+            || path.equals("/api/v1/auth/logout")
+            || path.equals("/api/v1/auth/verify-email")
+            || path.equals("/api/v1/auth/resend-verification")
+            || path.equals("/api/v1/auth/forgot-password")
+            || path.equals("/api/v1/auth/reset-password")
+            || path.equals("/api/v1/auth/2fa/verify")     // uses temp token, not access token
             || path.startsWith("/swagger-ui")
             || path.startsWith("/v3/api-docs");
     }

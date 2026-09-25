@@ -13,6 +13,13 @@ app:
   rate-limit:
     enabled: false             # ⚡ Disable rate limiting in tests
     cleanup-interval-minutes: 10
+  frontend:
+    base-url: http://localhost:3000
+  mail:
+    from: noreply@universal-auth.com
+    from-name: Universal Auth
+  2fa:
+    issuer: Universal Auth Test
 
 universal:
   auth:

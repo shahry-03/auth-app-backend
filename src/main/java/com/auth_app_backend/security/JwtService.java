@@ -181,4 +181,45 @@ public class JwtService {
         }
     }
 
+
+
+    // ─────────────────────────────────────────────────────────────
+    //  TEMP TOKEN — for 2FA step-2 verification (5 min validity)
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Generate a short-lived temp token used between password check and 2FA verify.
+     * Contains: userId as subject, type="2fa_temp", 5 min expiry.
+     */
+    public String generateTwoFactorTempToken(User user) {
+        Instant now = Instant.now();
+        return Jwts.builder()
+            .id(UUID.randomUUID().toString())
+            .subject(user.getId().toString())
+            .issuer(jwtIssuer)
+            .issuedAt(Date.from(now))
+            .expiration(Date.from(now.plusSeconds(300)))   // 5 minutes
+            .claim("type", "2fa_temp")
+            .signWith(secretKey)
+            .compact();
+    }
+
+    /**
+     * Check if token is a 2FA temp token.
+     */
+    public boolean isTwoFactorTempToken(String token) {
+        try {
+            Claims claims = parseToken(token).getPayload();
+            return "2fa_temp".equals(claims.get("type"));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Extract user ID from any token (access, refresh, or 2fa_temp).
+     * (Already exists as getUserId())
+     */
+
+
 }

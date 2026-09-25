@@ -124,10 +124,17 @@ public class AuthServiceImpl implements AuthService {
             throw new DisabledException("User is disabled");
         }
 
-        // 5. Create refresh token (persisted with jti)
+        // 5. ⚡ 2FA check — if enabled, return temp token instead of full tokens
+        if (user.isTwoFactorEnabled()) {
+            String tempToken = jwtService.generateTwoFactorTempToken(user);
+            return TokenResponse.requiresTwoFactor(tempToken);
+        }
+
+
+        // 6. Create refresh token (persisted with jti)
         RefreshToken refreshToken = refreshTokenService.createForUser(user);
 
-        // 6. Generate JWT access + refresh tokens
+        // 7. Generate JWT access + refresh tokens
         String accessToken = jwtService.generateAccessToken(user);
         String refreshTokenValue = jwtService.generateRefreshToken(user, refreshToken.getJti());
 

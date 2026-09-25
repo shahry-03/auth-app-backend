@@ -74,10 +74,9 @@ class AuthControllerTest {
             java.util.Set.of()
         );
 
-        tokenResponse = new TokenResponse(
+        tokenResponse = TokenResponse.of(
             "access-token-xyz",
             "refresh-token-abc",
-            "Bearer",
             3600000L,
             userResponse
         );

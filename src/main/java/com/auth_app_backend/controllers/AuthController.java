@@ -62,6 +62,14 @@ public class AuthController {
             HttpServletResponse response) {
 
         TokenResponse tokens = authService.login(request);
+
+        // ⚡ 2FA required — return temp token, no cookie yet
+        if (Boolean.TRUE.equals(tokens.requiresTwoFactor())) {
+            return ResponseEntity.ok(ApiResponse.success(
+                "Two-factor authentication required", tokens));
+        }
+
+        // Normal login — attach refresh cookie
         attachRefreshCookie(response, tokens.refreshToken());
         cookieService.addNoStoreHeaders(response);
 
