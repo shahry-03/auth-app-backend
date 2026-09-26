@@ -17,6 +17,25 @@ Click **"Use this template"** on GitHub to generate a fresh project with all aut
 - **HTTP-only Cookies** — Secure refresh token storage (SameSite=Lax)
 - **Password Change** — Auto-revokes all refresh tokens for security
 
+### Email Flows
+- **Email Verification** — Strict mode (login blocked until verified)
+- **Password Reset** — Token-based secure reset
+- **Async Sending** — Non-blocking, Thymeleaf HTML templates
+- **Mailtrap Support** — Dev-friendly email testing
+
+### Two-Factor Authentication (2FA)
+- **TOTP-based** — Google Authenticator / Authy compatible
+- **QR Code Setup** — Scan-to-enable flow
+- **10 Backup Codes** — BCrypt-hashed, single-use
+- **Temp Token Flow** — Login step 1 → 2FA verify step 2
+
+### Security Hardening
+- **Rate Limiting** — Bucket4j, per-IP on sensitive endpoints
+- **Account Lockout** — Auto-lock after 5 failed logins (15 min)
+- **Admin Unlock** — Manual unlock endpoint
+- **Session Management** — List/revoke devices, "Sign out other devices"
+- **Metadata Tracking** — IP + User-Agent per session
+
 ### Authorization (RBAC)
 - **Roles** — `USER`, `ADMIN` (built-in) + custom roles
 - **Permissions** — Granular `resource:action` format
@@ -32,8 +51,10 @@ Click **"Use this template"** on GitHub to generate a fresh project with all aut
 - **Global Exception Handling** — Consistent error responses
 - **DTO Separation** — `request/`, `response/`, `error/`, `internal/`
 - **Validation** — On all request DTOs
+- **Flyway Migrations** — Versioned schema, production-safe
 - **OpenAPI Docs** — Swagger UI integrated
 - **Health Check** — Spring Boot Actuator
+- **Testcontainers** — Real MySQL in integration tests
 
 ---
 
@@ -45,9 +66,14 @@ Click **"Use this template"** on GitHub to generate a fresh project with all aut
 | Framework | Spring Boot 3.3.5 |
 | Security | Spring Security 6.x |
 | Persistence | Spring Data JPA + Hibernate 6 |
-| Database | MySQL |
+| Database | MySQL 8.x |
+| Migrations | Flyway |
 | JWT | JJWT 0.12.5 |
 | OAuth2 | Spring Security OAuth2 Client |
+| 2FA | dev.samstevens.totp + ZXing |
+| Email | Spring Mail + Thymeleaf |
+| Rate Limiting | Bucket4j |
+| Testing | JUnit 5, Mockito, Testcontainers |
 | Docs | Springdoc OpenAPI 2.6.0 |
 | Boilerplate | Lombok |
 
@@ -58,8 +84,10 @@ Click **"Use this template"** on GitHub to generate a fresh project with all aut
 - **Java 21** or higher
 - **Maven** (or use `./mvnw` wrapper)
 - **MySQL 8.x** server running
+- **Docker** (for integration tests via Testcontainers)
 - **Google Cloud** account (for Google OAuth2 — optional)
 - **GitHub** account (for GitHub OAuth2 — optional)
+- **Mailtrap** account (for email testing — free)
 
 ---
 
@@ -92,8 +120,22 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate       # Flyway controls schema
     show-sql: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+  mail:
+    host: sandbox.smtp.mailtrap.io
+    port: 587                    # 587 works when 2525 is blocked
+    username: ${MAILTRAP_USERNAME}
+    password: ${MAILTRAP_PASSWORD}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
 
 server:
   port: 8080
@@ -115,11 +157,44 @@ universal:
       domain: ""
     frontend:
       success-redirect: http://localhost:3000/dashboard
+
+app:
+  rate-limit:
+    enabled: true
+    cleanup-interval-minutes: 10
+  security:
+    account-lockout:
+      enabled: true
+      max-failed-attempts: 5
+      lockout-duration-minutes: 15
+      reset-counter-after-minutes: 30
+      notify-on-lock: true
+  2fa:
+    issuer: Universal Auth
+  mail:
+    from: noreply@universal-auth.com
+    from-name: Universal Auth
 ```
 
 > ⚠️ **JWT Secret** must be **at least 64 bytes**. Generate a new one for each project.
 
-### 4. Build & Run
+### 4. Set Environment Variables
+
+**Option A — `.env` file** (git-ignored):
+
+```bash
+MAILTRAP_USERNAME=your-username
+MAILTRAP_PASSWORD=your-password
+```
+
+**Option B — Terminal export:**
+
+```bash
+export MAILTRAP_USERNAME=your-username
+export MAILTRAP_PASSWORD=your-password
+```
+
+### 5. Build & Run
 
 ```bash
 # Linux/macOS
@@ -131,13 +206,13 @@ mvnw.cmd clean install -DskipTests
 mvnw.cmd spring-boot:run
 ```
 
-### 5. Verify
+### 6. Verify
 
 - **App:** `http://localhost:8080`
 - **Swagger:** `http://localhost:8080/swagger-ui.html`
 - **Health:** `http://localhost:8080/actuator/health`
 
-On first run, `RbacDataInitializer` seeds:
+**On first run**, Flyway migrations V1-V6 apply and seed:
 
 | Type | Values |
 |---|---|
@@ -156,6 +231,11 @@ On first run, `RbacDataInitializer` seeds:
 | POST | `/api/v1/auth/login` | Login — returns access + refresh tokens |
 | POST | `/api/v1/auth/refresh` | Rotate refresh token |
 | POST | `/api/v1/auth/logout` | Logout — clears refresh cookie |
+| POST | `/api/v1/auth/verify-email` | Verify email via token |
+| POST | `/api/v1/auth/resend-verification` | Resend verification email |
+| POST | `/api/v1/auth/forgot-password` | Request password reset |
+| POST | `/api/v1/auth/reset-password` | Reset password with token |
+| POST | `/api/v1/auth/2fa/verify` | Complete 2FA login (step 2) |
 
 ### 👤 User Self-Service
 
@@ -164,6 +244,18 @@ On first run, `RbacDataInitializer` seeds:
 | GET | `/api/v1/users/me` | Authenticated |
 | PUT | `/api/v1/users/me` | `profile:write` |
 | POST | `/api/v1/users/me/change-password` | `profile:write` |
+| GET | `/api/v1/users/me/sessions` | Authenticated |
+| DELETE | `/api/v1/users/me/sessions/{id}` | Authenticated |
+| DELETE | `/api/v1/users/me/sessions` | Authenticated |
+
+### 🔐 2FA Management
+
+| Method | Endpoint | Required Authority |
+|---|---|---|
+| POST | `/api/v1/auth/2fa/setup` | Authenticated |
+| POST | `/api/v1/auth/2fa/enable` | Authenticated |
+| POST | `/api/v1/auth/2fa/disable` | Authenticated |
+| GET | `/api/v1/auth/2fa/status` | Authenticated |
 
 ### 🛡️ Admin — Users
 
@@ -174,6 +266,7 @@ On first run, `RbacDataInitializer` seeds:
 | PUT | `/api/v1/admin/users/{id}` | `ROLE_ADMIN` + `user:write` |
 | PATCH | `/api/v1/admin/users/{id}/status?enabled=` | `ROLE_ADMIN` + `user:write` |
 | DELETE | `/api/v1/admin/users/{id}` | `ROLE_ADMIN` + `user:delete` |
+| POST | `/api/v1/admin/users/{id}/unlock` | `ROLE_ADMIN` + `user:write` |
 
 ### 🛡️ Admin — Roles
 
@@ -254,6 +347,90 @@ universal:
 
 ---
 
+## 🔐 2FA (TOTP) Setup
+
+### Enable 2FA
+
+1. **Setup** — `POST /api/v1/auth/2fa/setup`
+   - Returns: `secret`, `qrCodeDataUri`, `otpAuthUrl`
+2. **Add to Authenticator** — Scan QR with Google Authenticator
+3. **Verify** — `POST /api/v1/auth/2fa/enable` with the 6-digit code
+   - Returns: 10 backup codes (save them securely!)
+
+### Login with 2FA
+
+1. **Step 1** — `POST /api/v1/auth/login` with email/password
+   - Returns: `{requiresTwoFactor: true, tempToken}`
+2. **Step 2** — `POST /api/v1/auth/2fa/verify` with `tempToken` + 6-digit code
+   - Returns full tokens
+
+### Backup Codes
+
+- 10 single-use codes, format `XXXX-XXXX-XXXX`
+- BCrypt-hashed in DB
+- Can be used in place of TOTP code
+- Consumed on use, tracked with `used_at` timestamp
+
+---
+
+## 🚦 Rate Limiting
+
+Per-IP rate limiting using **Bucket4j** (Token Bucket algorithm).
+
+| Endpoint | Limit |
+|---|---|
+| `POST /register` | 3/hour |
+| `POST /login` | 5/15min |
+| `POST /refresh` | 30/min |
+| `POST /forgot-password` | 5/hour |
+| `POST /resend-verification` | 3/hour |
+| `POST /2fa/verify` | 10/15min |
+
+**Response on limit exceeded:** `429 Too Many Requests` with `Retry-After` header.
+
+**Disable in tests:**
+```yaml
+app:
+  rate-limit:
+    enabled: false
+```
+
+---
+
+## 🔒 Account Lockout
+
+Automatic account lockout after **5 failed login attempts** (configurable).
+
+| Config | Default |
+|---|---|
+| `max-failed-attempts` | 5 |
+| `lockout-duration-minutes` | 15 |
+| `reset-counter-after-minutes` | 30 |
+
+**Response:** `423 Locked` with `X-Account-Locked-Until` header.
+
+**Reset on:** successful login, password change, password reset.
+
+**Admin unlock:** `POST /api/v1/admin/users/{id}/unlock`
+
+---
+
+## 📱 Session Management
+
+Users can view and manage their active sessions (devices).
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/v1/users/me/sessions` | List all active sessions |
+| DELETE | `/api/v1/users/me/sessions/{id}` | Revoke a specific session |
+| DELETE | `/api/v1/users/me/sessions` | Sign out other devices |
+
+**Session metadata tracked:** IP address, User-Agent, last used timestamp.
+
+**Current session** is identified via `refreshJti` claim in the access token.
+
+---
+
 ## 🎯 RBAC — How It Works
 
 ### Structure
@@ -262,10 +439,6 @@ universal:
 User ──M:N──> Role ──M:N──> Permission
 ```
 
-- A **User** can have multiple **Roles**
-- A **Role** can have multiple **Permissions**
-- **Effective authorities** = union of all roles + all permissions
-
 ### Authority Format
 
 | Type | DB Value | Authority String |
@@ -273,32 +446,18 @@ User ──M:N──> Role ──M:N──> Permission
 | Role | `ADMIN` | `ROLE_ADMIN` |
 | Role | `USER` | `ROLE_USER` |
 | Permission | `user:read` | `user:read` |
-| Permission | `profile:write` | `profile:write` |
-
-The `ROLE_` prefix is **added automatically** in `User.getAuthorities()`.
 
 ### Controller Usage
 
 ```java
-// Role check
 @PreAuthorize("hasRole('ADMIN')")
 public void deleteUser(...) {}
 
-// Permission check
 @PreAuthorize("hasAuthority('user:read')")
 public UserResponse getUser(...) {}
 
-// Combined (recommended for admin endpoints)
 @PreAuthorize("hasRole('ADMIN') and hasAuthority('user:read')")
 public List<UserResponse> listUsers() {}
-
-// Multiple roles (OR)
-@PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
-public void moderate(...) {}
-
-// Owner or Admin
-@PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.id")
-public UserResponse getUser(@PathVariable UUID id) {}
 ```
 
 ### Permission Naming Convention
@@ -310,63 +469,49 @@ Use `resource:action` format:
 | `user` | `user:read` | `user:write` | `user:delete` | `user:manage` |
 | `profile` | `profile:read` | `profile:write` | — | — |
 | `role` | — | — | — | `role:manage` |
-| `product` | `product:read` | `product:write` | `product:delete` | `product:manage` |
-
-### Adding Custom Roles (in consuming project)
-
-```java
-// In your RbacDataInitializer or a migration
-Role shopOwner = Role.builder()
-    .roleName("SHOP_OWNER")
-    .description("Shop owner role")
-    .permissions(Set.of(
-        permissionRepository.findByName("user:read").orElseThrow(),
-        permissionRepository.findByName("product:write").orElseThrow()
-    ))
-    .build();
-roleRepository.save(shopOwner);
-```
 
 ---
 
-## 🧪 Testing with Postman
+## 🗄️ Database Migrations (Flyway)
 
-### Import Collection
+| Version | Description |
+|---|---|
+| `V1` | Initial schema — users, roles, permissions, refresh_tokens |
+| `V2` | Seed RBAC base data |
+| `V3` | Email verification (email_verified, verification_tokens) |
+| `V4` | 2FA support (totp_secret, backup_codes) |
+| `V5` | Account lockout (failed_login_attempts, locked_until) |
+| `V6` | Session metadata (ip_address, user_agent, last_used_at) |
 
-1. Open Postman
-2. **Import** → select `docs/universal-auth.postman_collection.json`
-3. **Import** → select `docs/auth-dev.postman_environment.json`
-4. Select **"Auth Dev"** environment (top-right)
+**Migrations are immutable** — never modify a migration after it's applied to production.
 
-### Environment Variables
+---
 
-| Variable | Value | Notes |
-|---|---|---|
-| `baseUrl` | `http://localhost:8080` | Change if using different port |
-| `accessToken` | *(empty)* | Auto-filled on login |
-| `refreshToken` | *(empty)* | Auto-filled on login |
-| `userId` | *(empty)* | Auto-filled on register |
-| `permissionId` | *(empty)* | Auto-filled on permission create |
+## 🧪 Testing
 
-### Run Order
+### Run All Tests
 
-1. **Register User** → creates user, saves `userId`
-2. **Login** → saves `accessToken`, `refreshToken`
-3. **Get My Profile** → uses access token
-4. **Admin requests** → require ADMIN role
-
-### Make a User Admin
-
-```sql
-USE authdb;
-
-INSERT INTO user_roles (user_id, role_id)
-SELECT 
-    (SELECT user_id FROM users WHERE user_email = 'your@email.com'),
-    (SELECT role_id FROM roles WHERE role_name = 'ADMIN');
+```bash
+./mvnw test
 ```
 
-Logout → login again → new token includes `ROLE_ADMIN`.
+**Expected:** `Tests run: 266, Failures: 0, Errors: 0`
+
+### Test Coverage
+
+```bash
+./mvnw jacoco:report
+firefox target/site/jacoco/index.html
+```
+
+### Integration Tests (Testcontainers)
+
+```bash
+# Requires Docker running
+./mvnw test -Dtest=AuthIntegrationTest
+```
+
+**Note:** Test profile disables rate limiting + account lockout to prevent interference.
 
 ---
 
@@ -374,100 +519,45 @@ Logout → login again → new token includes `ROLE_ADMIN`.
 
 ```
 src/main/java/com/auth_app_backend/
-├── config/
-│   ├── APIDocConfig.java              # Swagger/OpenAPI config
-│   ├── AppConstants.java              # Public URLs constants
-│   ├── ProjectConfig.java             # General beans
-│   ├── RbacDataInitializer.java       # Seeds roles + permissions
-│   ├── SecurityConfig.java            # Security filter chain
-│   └── UniversalAuthProperties.java   # @ConfigurationProperties
-│
-├── controllers/
-│   ├── AuthController.java            # Public auth endpoints
-│   ├── UserController.java            # Self-service endpoints
-│   ├── AdminUserController.java       # Admin user CRUD
-│   ├── AdminRoleController.java       # Admin role CRUD + assignment
-│   └── AdminPermissionController.java # Admin permission CRUD
-│
+├── config/                            # Security, Flyway, Swagger, RBAC seeding
+├── controllers/                       # REST controllers (thin)
 ├── dto/
 │   ├── request/                       # Input DTOs (validated)
-│   │   ├── RegisterRequest.java
-│   │   ├── LoginRequest.java
-│   │   ├── RefreshTokenRequest.java
-│   │   ├── ChangePasswordRequest.java
-│   │   └── UpdateUserRequest.java
 │   ├── response/                      # Output DTOs
-│   │   ├── UserResponse.java
-│   │   ├── RoleResponse.java
-│   │   ├── PermissionResponse.java
-│   │   ├── TokenResponse.java
-│   │   └── ApiResponse.java
-│   ├── error/
-│   │   └── ApiError.java              # Standard error response
-│   └── internal/
-│       └── InternalUserResponse.java  # Service-to-service only
-│
-├── entity/
-│   ├── User.java                      # Implements UserDetails
-│   ├── Role.java
-│   ├── Permission.java
-│   ├── RefreshToken.java
-│   └── Provider.java                  # enum: LOCAL, GOOGLE, GITHUB, FACEBOOK
-│
-├── exception/
-│   ├── GlobalExceptionHandler.java
-│   └── ResourceNotFoundException.java
-│
-├── helper/
-│   └── UserHelper.java
-│
-├── mapper/                            # Manual mappers (type-safe)
-│   ├── UserMapper.java
-│   ├── RoleMapper.java
-│   └── PermissionMapper.java
-│
-├── repositories/
-│   ├── UserRepository.java
-│   ├── RoleRepository.java
-│   ├── PermissionRepository.java
-│   └── RefreshTokenRepository.java
-│
-├── security/
-│   ├── CookieService.java             # HTTP-only cookie management
-│   ├── CustomUserDetailsService.java
-│   ├── JwtAuthenticationFilter.java
-│   ├── JwtService.java                # Token generation/validation
-│   ├── Oauth2SuccessHandler.java      # Google/GitHub callback
-│   └── RefreshTokenExtractor.java     # Multi-source token extractor
-│
-└── services/
-    ├── AuthService.java               # register/login/refresh/logout
-    ├── UserService.java               # user CRUD
-    ├── RoleService.java               # role CRUD + assignment
-    ├── PermissionService.java         # permission CRUD
-    ├── RefreshTokenService.java       # token lifecycle
-    └── impl/                          # Implementations
+│   ├── error/                         # ApiError
+│   └── internal/                      # Service-to-service DTOs
+├── entity/                            # JPA entities
+├── exception/                         # Custom exceptions + handler
+├── helper/                            # Utilities
+├── mapper/                            # Manual entity ↔ DTO mappers
+├── ratelimit/                         # Bucket4j rate limiting
+├── repositories/                      # Spring Data JPA
+├── security/                          # JWT, cookies, filters, OAuth2
+└── services/                          # Business logic
 ```
 
 ---
 
-## 🔒 Security Features
+## 🔒 Security Features Summary
 
 | Feature | Implementation |
 |---|---|
 | Password Hashing | BCrypt (strength 10) |
 | JWT Algorithm | HS512 (512-bit) |
-| Access Token Expiry | 1 hour (configurable) |
-| Refresh Token Expiry | 7 days (configurable) |
-| Refresh Token Rotation | On every refresh, old revoked |
+| Access Token Expiry | 1 hour |
+| Refresh Token Expiry | 7 days |
+| Refresh Token Rotation | Every refresh, old revoked |
 | Password Change | Revokes all refresh tokens |
 | Cookie Flags | HttpOnly, SameSite=Lax, Secure (prod) |
-| Session Policy | STATELESS (no server sessions) |
+| Session Policy | STATELESS |
 | CSRF | Disabled (stateless JWT) |
 | Error Messages | Generic (no info leak) |
 | Input Validation | On all request DTOs |
 | Built-in Roles | Protected from deletion |
-| Logout | Clears cookie + revokes token |
+| 2FA | TOTP + 10 backup codes |
+| Rate Limiting | Bucket4j per-IP |
+| Account Lockout | 5 attempts → 15 min lock |
+| Session Management | Per-device tracking + revocation |
 
 ---
 
@@ -480,70 +570,17 @@ Before deploying to production:
   openssl rand -base64 64
   ```
 - [ ] **Environment Variables**: Move secrets to env vars (not in YAML)
-- [ ] **Database**: Set `ddl-auto: validate` (use Flyway/Liquibase for migrations)
-- [ ] **Cookies**: Set `universal.auth.cookie.secure: true`
+- [ ] **Database**: `ddl-auto: validate` (Flyway controls schema)
+- [ ] **Cookies**: `universal.auth.cookie.secure: true`
 - [ ] **CORS**: Configure for your frontend domain
 - [ ] **HTTPS**: Enforce HTTPS with valid certificate
-- [ ] **Rate Limiting**: Add on `/auth/login`, `/auth/refresh`
-- [ ] **Logging**: Structured JSON logs, appropriate levels
-- [ ] **Monitoring**: Enable Actuator endpoints + Micrometer
-- [ ] **OAuth2 Credentials**: Use production redirect URIs
-- [ ] **Email Verification**: Add for registration (optional)
-- [ ] **Password Reset**: Implement forgot-password flow (optional)
+- [ ] **Rate Limiting**: `app.rate-limit.enabled: true`
+- [ ] **Account Lockout**: `app.security.account-lockout.enabled: true`
+- [ ] **Email Provider**: Switch from Mailtrap to SendGrid/Mailgun/SES
+- [ ] **Logging**: Structured JSON logs
+- [ ] **Monitoring**: Actuator + Micrometer + Prometheus
 - [ ] **Backup**: Database backup strategy
-- [ ] **Docker**: Containerize for deployment (optional)
-
----
-
-## 🧭 Common Tasks
-
-### Add a New Permission
-
-```bash
-POST /api/v1/admin/permissions
-Authorization: Bearer <admin-token>
-{
-  "name": "order:read",
-  "description": "Read order details"
-}
-```
-
-### Add a New Role
-
-```bash
-POST /api/v1/admin/roles
-Authorization: Bearer <admin-token>
-{
-  "roleName": "ORDER_MANAGER",
-  "description": "Manages orders",
-  "permissions": ["order:read", "user:read"]
-}
-```
-
-### Assign Role to User
-
-```bash
-POST /api/v1/admin/roles/users/{userId}/assign/{roleId}
-Authorization: Bearer <admin-token>
-```
-
-### Protect a New Endpoint
-
-```java
-@GetMapping("/api/v1/orders")
-@PreAuthorize("hasAuthority('order:read')")
-public List<OrderResponse> listOrders() { ... }
-```
-
----
-
-## 📖 API Documentation
-
-Interactive Swagger UI:
-- **UI:** `http://localhost:8080/swagger-ui.html`
-- **OpenAPI JSON:** `http://localhost:8080/v3/api-docs`
-
-Click **Authorize** (top-right) → paste `Bearer <accessToken>` → test protected endpoints.
+- [ ] **Session Cleanup**: Scheduled job for expired tokens
 
 ---
 
@@ -551,9 +588,11 @@ Click **Authorize** (top-right) → paste `Bearer <accessToken>` → test protec
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Commit changes: `git commit -m "Add my feature"`
+3. Commit changes: `git commit -m "feat: add my feature"`
 4. Push: `git push origin feature/my-feature`
 5. Open a Pull Request
+
+**Conventional Commits** preferred: `feat:`, `fix:`, `docs:`, `test:`, `refactor:`
 
 ---
 
@@ -567,6 +606,8 @@ MIT License — free to use in personal and commercial projects.
 
 **Shahrayar Ali**
 - 🌐 [shahrayarali.me](https://www.shahrayarali.me/)
+- 💼 [LinkedIn](https://www.linkedin.com/in/shahrayar-sahito-269117360/)
+- 🐙 [GitHub](https://github.com/shahry-03)
 - 📧 [shahrayarsahito7@gmail.com](mailto:shahrayarsahito7@gmail.com)
 
 ---

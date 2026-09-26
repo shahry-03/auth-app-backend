@@ -5,489 +5,21 @@
   },
   "item": [
     {
-      "id": "b8adce7e-29af-4299-9b17-81e545ffaff5",
-      "name": "Auth",
-      "item": [
-        {
-          "id": "40a20f4a-8ee4-4d00-9886-4800677fda95",
-          "name": "Register User",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/register",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "register"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\"email\":\"shahry3@test.com\",\"password\":\"Test@1234\",\"name\":\"Shahry Test 2\"}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 201\", () => {",
-                  "    pm.response.to.have.status(201);",
-                  "});",
-                  "",
-                  "pm.test(\"Response has success=true\", () => {",
-                  "    const json = pm.response.json();",
-                  "    pm.expect(json.success).to.be.true;",
-                  "});",
-                  "",
-                  "pm.test(\"Password not leaked\", () => {",
-                  "    const json = pm.response.json();",
-                  "    pm.expect(json.data.password).to.be.undefined;",
-                  "});",
-                  "",
-                  "pm.test(\"Has USER role\", () => {",
-                  "    const json = pm.response.json();",
-                  "    const roles = json.data.roles.map(r => r.roleName);",
-                  "    pm.expect(roles).to.include(\"USER\");",
-                  "});",
-                  "",
-                  "// Save userId for later",
-                  "const json = pm.response.json();",
-                  "if (json.data && json.data.id) {",
-                  "    pm.environment.set(\"userId\", json.data.id);",
-                  "}"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "id": "ece9b55b-ba5e-4160-b80e-157fcb2d1465",
-          "name": "Logout",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/logout",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "logout"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "",
-              "options": {
-                "raw": {
-                  "language": "text"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 204\", () => {",
-                  "    pm.response.to.have.status(204);",
-                  "});",
-                  "",
-                  "pm.test(\"Cookie is cleared\", () => {",
-                  "    // Cookie should be cleared (max-age=0)",
-                  "    pm.expect(pm.response.headers.has(\"Set-Cookie\")).to.be.true;",
-                  "});",
-                  "",
-                  "// Clear local tokens",
-                  "pm.environment.unset(\"accessToken\");",
-                  "pm.environment.unset(\"refreshToken\");",
-                  "pm.environment.unset(\"oldAccessToken\");"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "id": "c4546dfe-ae96-4c5d-9270-a4e158ef76fc",
-          "name": "Refresh token",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/refresh",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "refresh"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "",
-              "options": {
-                "raw": {
-                  "language": "text"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 200\", () => {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test(\"Has new accessToken\", () => {",
-                  "    const json = pm.response.json();",
-                  "    pm.expect(json.data.accessToken).to.be.a('string').and.not.empty;",
-                  "});",
-                  "",
-                  "pm.test(\"Has new refreshToken\", () => {",
-                  "    const json = pm.response.json();",
-                  "    pm.expect(json.data.refreshToken).to.be.a('string').and.not.empty;",
-                  "});",
-                  "",
-                  "pm.test(\"New accessToken differs from old\", () => {",
-                  "    const json = pm.response.json();",
-                  "    const oldToken = pm.environment.get(\"accessToken\");",
-                  "    pm.expect(json.data.accessToken).to.not.eql(oldToken);",
-                  "});",
-                  "",
-                  "// Update tokens in environment",
-                  "const json = pm.response.json();",
-                  "if (json.data) {",
-                  "    pm.environment.set(\"oldAccessToken\", pm.environment.get(\"accessToken\"));",
-                  "    pm.environment.set(\"accessToken\", json.data.accessToken);",
-                  "    pm.environment.set(\"refreshToken\", json.data.refreshToken);",
-                  "}"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "id": "743345d2-bf71-4063-9f97-e26f5a7ec1aa",
-          "name": "Login",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "login"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\"email\":\"shahry3@test.com\",\"password\":\"abcd@1234\"}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 200\", () => {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test(\"Response has success=true\", () => {",
-                  "    const json = pm.response.json();",
-                  "    pm.expect(json.success).to.be.true;",
-                  "});",
-                  "",
-                  "pm.test(\"Has accessToken\", () => {",
-                  "    const json = pm.response.json();",
-                  "    pm.expect(json.data.accessToken).to.be.a('string').and.not.empty;",
-                  "});",
-                  "",
-                  "pm.test(\"Has refreshToken\", () => {",
-                  "    const json = pm.response.json();",
-                  "    pm.expect(json.data.refreshToken).to.be.a('string').and.not.empty;",
-                  "});",
-                  "",
-                  "pm.test(\"Token type is Bearer\", () => {",
-                  "    const json = pm.response.json();",
-                  "    pm.expect(json.data.tokenType).to.eql(\"Bearer\");",
-                  "});",
-                  "",
-                  "pm.test(\"User object present\", () => {",
-                  "    const json = pm.response.json();",
-                  "    pm.expect(json.data.user).to.be.an('object');",
-                  "    pm.expect(json.data.user.email).to.eql(\"shahry3@test.com\");",
-                  "});",
-                  "",
-                  "pm.test(\"Password not leaked\", () => {",
-                  "    const json = pm.response.json();",
-                  "    pm.expect(json.data.user.password).to.be.undefined;",
-                  "});",
-                  "",
-                  "pm.test(\"Cookie is set (refresh token)\", () => {",
-                  "    pm.expect(pm.response.headers.has(\"Set-Cookie\")).to.be.true;",
-                  "});",
-                  "",
-                  "// ⚡ AUTO-SAVE TOKENS for subsequent requests",
-                  "const json = pm.response.json();",
-                  "if (json.data) {",
-                  "    pm.environment.set(\"accessToken\", json.data.accessToken);",
-                  "    pm.environment.set(\"refreshToken\", json.data.refreshToken);",
-                  "    pm.environment.set(\"userId\", json.data.user.id);",
-                  "}"
-                ]
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "ec7f4dab-2101-4542-8205-c91c6c459a10",
-      "name": "User API (self-service)",
-      "item": [
-        {
-          "id": "cce4be29-a5c9-4ad7-88e3-102748428a11",
-          "name": "Get My profile",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users/me",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users",
-                "me"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiIyMDVlNWQwZi00YjRiLTQ1MmUtYTNiNi1jODIzYzVlN2ZhNGIiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDE2MjI4NCwiZXhwIjoxNzkwMTY1ODg0LCJ0eXBlIjoiYWNjZXNzIiwiZW1haWwiOiJzaGFocnkzQHRlc3QuY29tIiwicm9sZXMiOlsiVVNFUiJdfQ.hiBqqVlA2CVtVSJBOOjPZFJ-WnkcaQNtym93c0sPZFvGRNHxVbi39foHliY1WBndu-CXv3KfwbagKm5viQO4kw",
-                  "type": "string"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 200\", () => {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test(\"Email matches\", () => {",
-                  "    const json = pm.response.json();",
-                  "    pm.expect(json.data.email).to.eql(\"shahry3@test.com\");",
-                  "});",
-                  "",
-                  "pm.test(\"Password not leaked\", () => {",
-                  "    const json = pm.response.json();",
-                  "    pm.expect(json.data.password).to.be.undefined;",
-                  "});",
-                  "",
-                  "pm.test(\"Has USER role\", () => {",
-                  "    const json = pm.response.json();",
-                  "    const roles = json.data.roles.map(r => r.roleName);",
-                  "    pm.expect(roles).to.include(\"USER\");",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "id": "a62fa8b1-1c5d-4949-aca8-523e43d40aca",
-          "name": "Change My Password",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users/me/change-password",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users",
-                "me",
-                "change-password"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\"currentPassword\":\"Test@1234\",\"newPassword\":\"NewTest@5678\"}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiI3MTkwZjQ3Ny1iMzc2LTQwNTYtYjQ3ZS1kZDI1NjM0MmRkYzEiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDE2OTk1OSwiZXhwIjoxNzkwMTczNTU5LCJ0eXBlIjoiYWNjZXNzIiwiZW1haWwiOiJzaGFocnkzQHRlc3QuY29tIiwicm9sZXMiOlsiVVNFUiIsIkFETUlOIl19.-Tc1x6QCOUZsph3oOrWHeJZ4TTnHSKQ_HScYc9W53B6gvOw7Ft1xghlvX8zbI2qcRV48c-wQDySTT4mfxUuUKA",
-                  "type": "string"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 200\", () => {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test(\"Message confirms password change\", () => {",
-                  "    const json = pm.response.json();",
-                  "    pm.expect(json.message.toLowerCase()).to.include(\"password\");",
-                  "});",
-                  "",
-                  "pm.test(\"Password not leaked in response\", () => {",
-                  "    const json = pm.response.json();",
-                  "    pm.expect(json.data).to.be.null;   // ApiResponse.success(\"message\") -> data null",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "id": "501d9588-b5b2-41b3-881c-acd1a47c6eb2",
-          "name": "Update My Profile",
-          "request": {
-            "method": "PUT",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users/me",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users",
-                "me"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\"name\":\"Shahry Updated\",\"image\":\"https://example.com/avatar.png\"}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiI4MGQ0ZjUyYS01MDk1LTQ2ZGUtYTZlMC03NTQ5NGU2NWI5MTMiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDE2NzczMCwiZXhwIjoxNzkwMTcxMzMwLCJ0eXBlIjoiYWNjZXNzIiwicm9sZXMiOlsiVVNFUiIsIkFETUlOIl0sImVtYWlsIjoic2hhaHJ5M0B0ZXN0LmNvbSJ9.DT91EPQAwNTgjHfcFeZbL5arUQOc-NJU3v-Sto3TXoFU0of1CdAL3j6AtMFSczN2tw8uSecP71_fq2XVEQ9h_A",
-                  "type": "string"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 200\", () => {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test(\"Name updated\", () => {",
-                  "    const json = pm.response.json();",
-                  "    pm.expect(json.data.name).to.eql(\"Shahry Updated\");",
-                  "});",
-                  "",
-                  "pm.test(\"Image updated\", () => {",
-                  "    const json = pm.response.json();",
-                  "    pm.expect(json.data.image).to.eql(\"https://example.com/avatar.png\");",
-                  "});",
-                  "",
-                  "pm.test(\"Email NOT changed\", () => {",
-                  "    const json = pm.response.json();",
-                  "    pm.expect(json.data.email).to.eql(\"shahry3@test.com\");",
-                  "});"
-                ]
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
       "id": "639cd53b-1614-4d4c-b1a2-effffd2dac3e",
       "name": "Admin API",
       "item": [
         {
-          "id": "bd4bf4a4-1246-4e80-8931-2e3ecec2aad4",
-          "name": "Users",
+          "id": "6824946d-8beb-405c-9524-ccca6fde9d7c",
+          "name": "Permissions",
           "item": [
             {
-              "id": "b42457c2-0a5c-46e9-905f-a7a7ef82847d",
-              "name": "Verify User Gone (404)",
+              "id": "4fb32aca-55cd-49bb-9367-84ea4c0d83eb",
+              "name": "Delete Permission",
               "request": {
-                "method": "GET",
+                "method": "DELETE",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/admin/users/d2a5bbd4-88a3-4e45-8723-63414d198bdd",
+                  "raw": "{{baseUrl}}/api/v1/admin/permissions/77388f88-307f-44f7-abad-b38a23352631",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -495,8 +27,8 @@
                     "api",
                     "v1",
                     "admin",
-                    "users",
-                    "d2a5bbd4-88a3-4e45-8723-63414d198bdd"
+                    "permissions",
+                    "77388f88-307f-44f7-abad-b38a23352631"
                   ]
                 },
                 "auth": {
@@ -504,295 +36,7 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiJkN2FjZjRiYy1jNmJmLTQ1NzMtODU0NC01YzFkMjFlNzJiMmMiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDE4MjgxNywiZXhwIjoxNzkwMTg2NDE3LCJ0eXBlIjoiYWNjZXNzIiwiZW1haWwiOiJzaGFocnkzQHRlc3QuY29tIiwicm9sZXMiOlsiVVNFUiIsIkFETUlOIl19.tQrEJplrHzCTm9nR7EQUGbeUnvHAmtNBtFhPQm53zqFw8eZfnlWJaUrrU9V7exwz9-V0F9FVfhUYkDMRT-qIQA",
-                      "type": "string"
-                    }
-                  ]
-                }
-              }
-            },
-            {
-              "id": "55b975e5-427a-4c46-9093-a65079feebd0",
-              "name": "Delete User (Destructive)",
-              "request": {
-                "method": "DELETE",
-                "header": [],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/admin/users/d2a5bbd4-88a3-4e45-8723-63414d198bdd",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "users",
-                    "d2a5bbd4-88a3-4e45-8723-63414d198bdd"
-                  ]
-                }
-              }
-            },
-            {
-              "id": "f6337dbc-3c09-4c28-a3c3-88ff0a347de0",
-              "name": "Re-Enable User",
-              "request": {
-                "method": "PATCH",
-                "header": [],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/admin/users/d2a5bbd4-88a3-4e45-8723-63414d198bdd/status?enabled=true",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "users",
-                    "d2a5bbd4-88a3-4e45-8723-63414d198bdd",
-                    "status"
-                  ],
-                  "query": [
-                    {
-                      "key": "enabled",
-                      "value": "true"
-                    }
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status is 200\", () => {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test(\"Message confirms enable\", () => {",
-                      "    const json = pm.response.json();",
-                      "    pm.expect(json.message.toLowerCase()).to.include(\"enabled\");",
-                      "});"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "id": "2de06dcf-255c-4504-a4be-21d6a4f70b2c",
-              "name": "Enable/Disable User",
-              "request": {
-                "method": "PATCH",
-                "header": [],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/admin/users/d2a5bbd4-88a3-4e45-8723-63414d198bdd/status?enabled=false",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "users",
-                    "d2a5bbd4-88a3-4e45-8723-63414d198bdd",
-                    "status"
-                  ],
-                  "query": [
-                    {
-                      "key": "enabled",
-                      "value": "false"
-                    }
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status is 200\", () => {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test(\"Message confirms disable\", () => {",
-                      "    const json = pm.response.json();",
-                      "    pm.expect(json.message.toLowerCase()).to.include(\"disabled\");",
-                      "});"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "id": "cbdbf52e-146d-451c-9fe9-fda42ccfb9d5",
-              "name": "Delete ADMIN (Built-in)",
-              "request": {
-                "method": "DELETE",
-                "header": [],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/admin/roles/40d85f87-9cc4-4c7d-80ad-05e384d29461",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "roles",
-                    "40d85f87-9cc4-4c7d-80ad-05e384d29461"
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status is 400\", () => {",
-                      "    pm.response.to.have.status(400);",
-                      "});",
-                      "",
-                      "pm.test(\"Message mentions built-in\", () => {",
-                      "    const json = pm.response.json();",
-                      "    pm.expect(json.message.toLowerCase()).to.include(\"built-in\");",
-                      "});"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "id": "393cf39f-97d1-4a55-8603-4f9eff33511a",
-              "name": "Delete USER (Built-in)",
-              "request": {
-                "method": "DELETE",
-                "header": [],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/admin/roles/30f02e07-f5a2-41ca-8e76-1ef708f6ab93",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "roles",
-                    "30f02e07-f5a2-41ca-8e76-1ef708f6ab93"
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status is 400 (built-in protection)\", () => {",
-                      "    pm.response.to.have.status(400);",
-                      "});",
-                      "",
-                      "pm.test(\"Message mentions built-in\", () => {",
-                      "    const json = pm.response.json();",
-                      "    pm.expect(json.message.toLowerCase()).to.include(\"built-in\");",
-                      "});"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "id": "b3d08db7-58bb-4efb-bd93-db3a075bbda1",
-              "name": "List Users",
-              "request": {
-                "method": "GET",
-                "header": [],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/admin/users",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "users"
-                  ]
-                },
-                "body": {
-                  "mode": "raw",
-                  "raw": "",
-                  "options": {
-                    "raw": {
-                      "language": "text"
-                    }
-                  }
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiIyMDVlNWQwZi00YjRiLTQ1MmUtYTNiNi1jODIzYzVlN2ZhNGIiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDE2MjI4NCwiZXhwIjoxNzkwMTY1ODg0LCJ0eXBlIjoiYWNjZXNzIiwiZW1haWwiOiJzaGFocnkzQHRlc3QuY29tIiwicm9sZXMiOlsiVVNFUiJdfQ.hiBqqVlA2CVtVSJBOOjPZFJ-WnkcaQNtym93c0sPZFvGRNHxVbi39foHliY1WBndu-CXv3KfwbagKm5viQO4kw",
-                      "type": "string"
-                    }
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status is 200 (ADMIN access)\", () => {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test(\"Returns user list\", () => {",
-                      "    const json = pm.response.json();",
-                      "    pm.expect(json.success).to.be.true;",
-                      "    pm.expect(json.data).to.be.an('array');",
-                      "    pm.expect(json.data.length).to.be.greaterThan(0);",
-                      "});",
-                      "",
-                      "pm.test(\"Passwords not leaked\", () => {",
-                      "    const json = pm.response.json();",
-                      "    json.data.forEach(user => {",
-                      "        pm.expect(user.password).to.be.undefined;",
-                      "    });",
-                      "});"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "id": "8f8231e9-bebf-4eea-8008-3c545bebfec0",
-              "name": "Get User by ID",
-              "request": {
-                "method": "GET",
-                "header": [],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/admin/users/ea7e8595-745f-46c6-b9d6-28082da0be8f",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "users",
-                    "ea7e8595-745f-46c6-b9d6-28082da0be8f"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiJmYTFiYTMzZS00YzhlLTRhZjYtOWRlMy0yN2NjMDBkYWZmOWEiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDIyODcyNCwiZXhwIjoxNzkwMjMyMzI0LCJlbWFpbCI6InNoYWhyeTNAdGVzdC5jb20iLCJ0eXBlIjoiYWNjZXNzIiwicm9sZXMiOlsiVVNFUiIsIkFETUlOIl19.6jLUYiVrrlVwYb4YweVZRXD0rOd5W4O0I1NWJWexs8t6forrr3MCnas1pys1nFLzgD5Z5pEWU716ev7nlpEThA",
+                      "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiI2ZjBjOGNlMy02NDU3LTQwYmEtYTI2OS00ZTc1NTdkYzRmOTYiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDE3NzYyNCwiZXhwIjoxNzkwMTgxMjI0LCJ0eXBlIjoiYWNjZXNzIiwiZW1haWwiOiJzaGFocnkzQHRlc3QuY29tIiwicm9sZXMiOlsiVVNFUiIsIkFETUlOIl19.x3Te-ZAqMU4CMyJ33r29Ph_EOhY53kGYNesDrIHFU6KcEQvgQlYFkPo4FOgbc6FNTU4Dx-Gt7y9iuHTRf_mKwA",
                       "type": "string"
                     }
                   ]
@@ -806,21 +50,6 @@
                     "exec": [
                       "pm.test(\"Status is 200\", () => {",
                       "    pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test(\"Returns correct user\", () => {",
-                      "    const json = pm.response.json();",
-                      "    pm.expect(json.data.email).to.eql(\"shahry@test.com\");",
-                      "});",
-                      "",
-                      "pm.test(\"Password not leaked\", () => {",
-                      "    const json = pm.response.json();",
-                      "    pm.expect(json.data.password).to.be.undefined;",
-                      "});",
-                      "",
-                      "pm.test(\"Has roles array\", () => {",
-                      "    const json = pm.response.json();",
-                      "    pm.expect(json.data.roles).to.be.an('array');",
                       "});"
                     ]
                   }
@@ -828,13 +57,13 @@
               ]
             },
             {
-              "id": "c24b18f2-00bc-4d6a-b9ca-35b273e171ca",
-              "name": "Update User",
+              "id": "62d3ea50-8916-4609-be33-9555730f13c6",
+              "name": "Update Permission",
               "request": {
                 "method": "PUT",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/admin/users/eafa8318-481f-46b6-bc92-83a71380b75e",
+                  "raw": "{{baseUrl}}/api/v1/admin/permissions/77388f88-307f-44f7-abad-b38a23352631",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -842,27 +71,56 @@
                     "api",
                     "v1",
                     "admin",
-                    "users",
-                    "eafa8318-481f-46b6-bc92-83a71380b75e"
+                    "permissions",
+                    "77388f88-307f-44f7-abad-b38a23352631"
                   ]
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\"name\":\"Admin Updated Name\",\"enabled\":true}",
+                  "raw": "{\"description\":\"Updated description for product read\"}",
                   "options": {
                     "raw": {
                       "language": "json"
                     }
                   }
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiJmYTFiYTMzZS00YzhlLTRhZjYtOWRlMy0yN2NjMDBkYWZmOWEiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDIyODcyNCwiZXhwIjoxNzkwMjMyMzI0LCJlbWFpbCI6InNoYWhyeTNAdGVzdC5jb20iLCJ0eXBlIjoiYWNjZXNzIiwicm9sZXMiOlsiVVNFUiIsIkFETUlOIl19.6jLUYiVrrlVwYb4YweVZRXD0rOd5W4O0I1NWJWexs8t6forrr3MCnas1pys1nFLzgD5Z5pEWU716ev7nlpEThA",
-                      "type": "string"
-                    }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Description updated\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.data.description).to.eql(\"Updated description for product read\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "bc723c48-344b-49a6-940c-0bd97e45fb8c",
+              "name": "Get Permission by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/permissions/77388f88-307f-44f7-abad-b38a23352631",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "permissions",
+                    "77388f88-307f-44f7-abad-b38a23352631"
                   ]
                 }
               },
@@ -876,19 +134,109 @@
                       "    pm.response.to.have.status(200);",
                       "});",
                       "",
-                      "pm.test(\"Name updated\", () => {",
+                      "pm.test(\"Correct permission\", () => {",
                       "    const json = pm.response.json();",
-                      "    pm.expect(json.data.name).to.eql(\"Admin Updated Name\");",
+                      "    pm.expect(json.data.name).to.eql(\"product:read\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "ee2857f3-9d14-4622-af5f-a597fb43fd58",
+              "name": "Create Permission",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/permissions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "permissions"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"name\":\"product:read\",\"description\":\"Read product details\"}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 201\", () => {",
+                      "    pm.response.to.have.status(201);",
                       "});",
                       "",
-                      "pm.test(\"Email NOT changed\", () => {",
+                      "pm.test(\"Permission created\", () => {",
                       "    const json = pm.response.json();",
-                      "    pm.expect(json.data.email).to.eql(\"shahry3@test.com\");",
+                      "    pm.expect(json.data.name).to.eql(\"product:read\");",
                       "});",
                       "",
-                      "pm.test(\"updatedAt changed\", () => {",
+                      "// Save permission ID",
+                      "const json = pm.response.json();",
+                      "if (json.data && json.data.id) {",
+                      "    pm.environment.set(\"permissionId\", json.data.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "8a296547-fc51-4484-a7a6-8c591878bb83",
+              "name": "List All Permissions",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/permissions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "permissions"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Returns 6 permissions\", () => {",
                       "    const json = pm.response.json();",
-                      "    pm.expect(json.data.updatedAt).to.not.be.null;",
+                      "    pm.expect(json.data).to.be.an('array');",
+                      "    pm.expect(json.data.length).to.be.greaterThan(0);",
+                      "    pm.expect(json.data.length).to.eql(6);  // Base 6 permissions",
+                      "});",
+                      "",
+                      "pm.test(\"Permissions have name field\", () => {",
+                      "    const json = pm.response.json();",
+                      "    json.data.forEach(p => {",
+                      "        pm.expect(p.name).to.be.a('string');",
+                      "    });",
                       "});"
                     ]
                   }
@@ -901,6 +249,63 @@
           "id": "92f11097-3ce4-4954-8c9f-805cea9e431c",
           "name": "Roles",
           "item": [
+            {
+              "id": "346962b9-f105-4204-9f89-244f1c178f70",
+              "name": "Get User Roles",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/roles/users/eafa8318-481f-46b6-bc92-83a71380b75e",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "roles",
+                    "users",
+                    "eafa8318-481f-46b6-bc92-83a71380b75e"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiJmYTFiYTMzZS00YzhlLTRhZjYtOWRlMy0yN2NjMDBkYWZmOWEiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDIyODcyNCwiZXhwIjoxNzkwMjMyMzI0LCJlbWFpbCI6InNoYWhyeTNAdGVzdC5jb20iLCJ0eXBlIjoiYWNjZXNzIiwicm9sZXMiOlsiVVNFUiIsIkFETUlOIl19.6jLUYiVrrlVwYb4YweVZRXD0rOd5W4O0I1NWJWexs8t6forrr3MCnas1pys1nFLzgD5Z5pEWU716ev7nlpEThA",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Returns roles array\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.data).to.be.an('array');",
+                      "});",
+                      "",
+                      "pm.test(\"shahry3 has ADMIN + USER\", () => {",
+                      "    const json = pm.response.json();",
+                      "    const roleNames = json.data.map(r => r.roleName);",
+                      "    pm.expect(roleNames).to.include(\"ADMIN\");",
+                      "    pm.expect(roleNames).to.include(\"USER\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
             {
               "id": "145246af-9948-4e1b-9d68-4fe92e5a6d12",
               "name": "Delete Role",
@@ -1264,15 +669,21 @@
                   }
                 }
               ]
-            },
+            }
+          ]
+        },
+        {
+          "id": "bd4bf4a4-1246-4e80-8931-2e3ecec2aad4",
+          "name": "Users",
+          "item": [
             {
-              "id": "346962b9-f105-4204-9f89-244f1c178f70",
-              "name": "Get User Roles",
+              "id": "9d8854e3-0c75-4982-9e23-86a7849e6d39",
+              "name": "Unlock User",
               "request": {
-                "method": "GET",
+                "method": "POST",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/admin/roles/users/eafa8318-481f-46b6-bc92-83a71380b75e",
+                  "raw": "{{baseUrl}}/api/v1/admin/users/d1dae449-d3fa-41e4-b0c0-2533860e786a/unlock",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1280,9 +691,108 @@
                     "api",
                     "v1",
                     "admin",
-                    "roles",
+                    "users",
+                    "d1dae449-d3fa-41e4-b0c0-2533860e786a",
+                    "unlock"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "id": "c24b18f2-00bc-4d6a-b9ca-35b273e171ca",
+              "name": "Update User",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/users/eafa8318-481f-46b6-bc92-83a71380b75e",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
                     "users",
                     "eafa8318-481f-46b6-bc92-83a71380b75e"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"name\":\"Admin Updated Name\",\"enabled\":true}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiJmYTFiYTMzZS00YzhlLTRhZjYtOWRlMy0yN2NjMDBkYWZmOWEiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDIyODcyNCwiZXhwIjoxNzkwMjMyMzI0LCJlbWFpbCI6InNoYWhyeTNAdGVzdC5jb20iLCJ0eXBlIjoiYWNjZXNzIiwicm9sZXMiOlsiVVNFUiIsIkFETUlOIl19.6jLUYiVrrlVwYb4YweVZRXD0rOd5W4O0I1NWJWexs8t6forrr3MCnas1pys1nFLzgD5Z5pEWU716ev7nlpEThA",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Name updated\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.data.name).to.eql(\"Admin Updated Name\");",
+                      "});",
+                      "",
+                      "pm.test(\"Email NOT changed\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.data.email).to.eql(\"shahry3@test.com\");",
+                      "});",
+                      "",
+                      "pm.test(\"updatedAt changed\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.data.updatedAt).to.not.be.null;",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "8f8231e9-bebf-4eea-8008-3c545bebfec0",
+              "name": "Get User by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/users/ea7e8595-745f-46c6-b9d6-28082da0be8f",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "users",
+                    "ea7e8595-745f-46c6-b9d6-28082da0be8f"
                   ]
                 },
                 "auth": {
@@ -1306,36 +816,33 @@
                       "    pm.response.to.have.status(200);",
                       "});",
                       "",
-                      "pm.test(\"Returns roles array\", () => {",
+                      "pm.test(\"Returns correct user\", () => {",
                       "    const json = pm.response.json();",
-                      "    pm.expect(json.data).to.be.an('array');",
+                      "    pm.expect(json.data.email).to.eql(\"shahry@test.com\");",
                       "});",
                       "",
-                      "pm.test(\"shahry3 has ADMIN + USER\", () => {",
+                      "pm.test(\"Password not leaked\", () => {",
                       "    const json = pm.response.json();",
-                      "    const roleNames = json.data.map(r => r.roleName);",
-                      "    pm.expect(roleNames).to.include(\"ADMIN\");",
-                      "    pm.expect(roleNames).to.include(\"USER\");",
+                      "    pm.expect(json.data.password).to.be.undefined;",
+                      "});",
+                      "",
+                      "pm.test(\"Has roles array\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.data.roles).to.be.an('array');",
                       "});"
                     ]
                   }
                 }
               ]
-            }
-          ]
-        },
-        {
-          "id": "6824946d-8beb-405c-9524-ccca6fde9d7c",
-          "name": "Permissions",
-          "item": [
+            },
             {
-              "id": "4fb32aca-55cd-49bb-9367-84ea4c0d83eb",
-              "name": "Delete Permission",
+              "id": "b42457c2-0a5c-46e9-905f-a7a7ef82847d",
+              "name": "Verify User Gone (404)",
               "request": {
-                "method": "DELETE",
+                "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/admin/permissions/77388f88-307f-44f7-abad-b38a23352631",
+                  "raw": "{{baseUrl}}/api/v1/admin/users/d2a5bbd4-88a3-4e45-8723-63414d198bdd",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -1343,8 +850,8 @@
                     "api",
                     "v1",
                     "admin",
-                    "permissions",
-                    "77388f88-307f-44f7-abad-b38a23352631"
+                    "users",
+                    "d2a5bbd4-88a3-4e45-8723-63414d198bdd"
                   ]
                 },
                 "auth": {
@@ -1352,7 +859,237 @@
                   "bearer": [
                     {
                       "key": "token",
-                      "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiI2ZjBjOGNlMy02NDU3LTQwYmEtYTI2OS00ZTc1NTdkYzRmOTYiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDE3NzYyNCwiZXhwIjoxNzkwMTgxMjI0LCJ0eXBlIjoiYWNjZXNzIiwiZW1haWwiOiJzaGFocnkzQHRlc3QuY29tIiwicm9sZXMiOlsiVVNFUiIsIkFETUlOIl19.x3Te-ZAqMU4CMyJ33r29Ph_EOhY53kGYNesDrIHFU6KcEQvgQlYFkPo4FOgbc6FNTU4Dx-Gt7y9iuHTRf_mKwA",
+                      "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiJkN2FjZjRiYy1jNmJmLTQ1NzMtODU0NC01YzFkMjFlNzJiMmMiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDE4MjgxNywiZXhwIjoxNzkwMTg2NDE3LCJ0eXBlIjoiYWNjZXNzIiwiZW1haWwiOiJzaGFocnkzQHRlc3QuY29tIiwicm9sZXMiOlsiVVNFUiIsIkFETUlOIl19.tQrEJplrHzCTm9nR7EQUGbeUnvHAmtNBtFhPQm53zqFw8eZfnlWJaUrrU9V7exwz9-V0F9FVfhUYkDMRT-qIQA",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "id": "55b975e5-427a-4c46-9093-a65079feebd0",
+              "name": "Delete User (Destructive)",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/users/d2a5bbd4-88a3-4e45-8723-63414d198bdd",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "users",
+                    "d2a5bbd4-88a3-4e45-8723-63414d198bdd"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "f6337dbc-3c09-4c28-a3c3-88ff0a347de0",
+              "name": "Re-Enable User",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/users/d2a5bbd4-88a3-4e45-8723-63414d198bdd/status?enabled=true",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "users",
+                    "d2a5bbd4-88a3-4e45-8723-63414d198bdd",
+                    "status"
+                  ],
+                  "query": [
+                    {
+                      "key": "enabled",
+                      "value": "true"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Message confirms enable\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.message.toLowerCase()).to.include(\"enabled\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "2de06dcf-255c-4504-a4be-21d6a4f70b2c",
+              "name": "Enable/Disable User",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/users/d2a5bbd4-88a3-4e45-8723-63414d198bdd/status?enabled=false",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "users",
+                    "d2a5bbd4-88a3-4e45-8723-63414d198bdd",
+                    "status"
+                  ],
+                  "query": [
+                    {
+                      "key": "enabled",
+                      "value": "false"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", () => {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Message confirms disable\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.message.toLowerCase()).to.include(\"disabled\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "cbdbf52e-146d-451c-9fe9-fda42ccfb9d5",
+              "name": "Delete ADMIN (Built-in)",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/roles/40d85f87-9cc4-4c7d-80ad-05e384d29461",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "roles",
+                    "40d85f87-9cc4-4c7d-80ad-05e384d29461"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 400\", () => {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Message mentions built-in\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.message.toLowerCase()).to.include(\"built-in\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "393cf39f-97d1-4a55-8603-4f9eff33511a",
+              "name": "Delete USER (Built-in)",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/roles/30f02e07-f5a2-41ca-8e76-1ef708f6ab93",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "roles",
+                    "30f02e07-f5a2-41ca-8e76-1ef708f6ab93"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 400 (built-in protection)\", () => {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Message mentions built-in\", () => {",
+                      "    const json = pm.response.json();",
+                      "    pm.expect(json.message.toLowerCase()).to.include(\"built-in\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": "b3d08db7-58bb-4efb-bd93-db3a075bbda1",
+              "name": "List Users",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/users",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "users"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "",
+                  "options": {
+                    "raw": {
+                      "language": "text"
+                    }
+                  }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiIyMDVlNWQwZi00YjRiLTQ1MmUtYTNiNi1jODIzYzVlN2ZhNGIiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDE2MjI4NCwiZXhwIjoxNzkwMTY1ODg0LCJ0eXBlIjoiYWNjZXNzIiwiZW1haWwiOiJzaGFocnkzQHRlc3QuY29tIiwicm9sZXMiOlsiVVNFUiJdfQ.hiBqqVlA2CVtVSJBOOjPZFJ-WnkcaQNtym93c0sPZFvGRNHxVbi39foHliY1WBndu-CXv3KfwbagKm5viQO4kw",
                       "type": "string"
                     }
                   ]
@@ -1364,200 +1101,1037 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "pm.test(\"Status is 200\", () => {",
-                      "    pm.response.to.have.status(200);",
-                      "});"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "id": "62d3ea50-8916-4609-be33-9555730f13c6",
-              "name": "Update Permission",
-              "request": {
-                "method": "PUT",
-                "header": [],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/admin/permissions/77388f88-307f-44f7-abad-b38a23352631",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "permissions",
-                    "77388f88-307f-44f7-abad-b38a23352631"
-                  ]
-                },
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\"description\":\"Updated description for product read\"}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                }
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status is 200\", () => {",
+                      "pm.test(\"Status is 200 (ADMIN access)\", () => {",
                       "    pm.response.to.have.status(200);",
                       "});",
                       "",
-                      "pm.test(\"Description updated\", () => {",
+                      "pm.test(\"Returns user list\", () => {",
                       "    const json = pm.response.json();",
-                      "    pm.expect(json.data.description).to.eql(\"Updated description for product read\");",
-                      "});"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "id": "bc723c48-344b-49a6-940c-0bd97e45fb8c",
-              "name": "Get Permission by ID",
-              "request": {
-                "method": "GET",
-                "header": [],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/admin/permissions/77388f88-307f-44f7-abad-b38a23352631",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "permissions",
-                    "77388f88-307f-44f7-abad-b38a23352631"
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status is 200\", () => {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test(\"Correct permission\", () => {",
-                      "    const json = pm.response.json();",
-                      "    pm.expect(json.data.name).to.eql(\"product:read\");",
-                      "});"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "id": "ee2857f3-9d14-4622-af5f-a597fb43fd58",
-              "name": "Create Permission",
-              "request": {
-                "method": "POST",
-                "header": [],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/admin/permissions",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "permissions"
-                  ]
-                },
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\"name\":\"product:read\",\"description\":\"Read product details\"}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                }
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status is 201\", () => {",
-                      "    pm.response.to.have.status(201);",
-                      "});",
-                      "",
-                      "pm.test(\"Permission created\", () => {",
-                      "    const json = pm.response.json();",
-                      "    pm.expect(json.data.name).to.eql(\"product:read\");",
-                      "});",
-                      "",
-                      "// Save permission ID",
-                      "const json = pm.response.json();",
-                      "if (json.data && json.data.id) {",
-                      "    pm.environment.set(\"permissionId\", json.data.id);",
-                      "}"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "id": "8a296547-fc51-4484-a7a6-8c591878bb83",
-              "name": "List All Permissions",
-              "request": {
-                "method": "GET",
-                "header": [],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/admin/permissions",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "permissions"
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test(\"Status is 200\", () => {",
-                      "    pm.response.to.have.status(200);",
-                      "});",
-                      "",
-                      "pm.test(\"Returns 6 permissions\", () => {",
-                      "    const json = pm.response.json();",
+                      "    pm.expect(json.success).to.be.true;",
                       "    pm.expect(json.data).to.be.an('array');",
                       "    pm.expect(json.data.length).to.be.greaterThan(0);",
-                      "    pm.expect(json.data.length).to.eql(6);  // Base 6 permissions",
                       "});",
                       "",
-                      "pm.test(\"Permissions have name field\", () => {",
+                      "pm.test(\"Passwords not leaked\", () => {",
                       "    const json = pm.response.json();",
-                      "    json.data.forEach(p => {",
-                      "        pm.expect(p.name).to.be.a('string');",
+                      "    json.data.forEach(user => {",
+                      "        pm.expect(user.password).to.be.undefined;",
                       "    });",
                       "});"
                     ]
                   }
                 }
               ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ec7f4dab-2101-4542-8205-c91c6c459a10",
+      "name": "User API (self-service)",
+      "item": [
+        {
+          "id": "b4560f5d-3ffa-46e5-a531-7b4fddc5f0e2",
+          "name": "Revoke All Except Current",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "sessions"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "e820fcc5-01e4-42d3-93a5-9d5653ec4a2d",
+          "name": "Revoke One Session",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/sessions/{{sessionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "sessions",
+                "{{sessionId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "c0bbe4be-27b2-4a55-8942-fd904982ef75",
+          "name": "List Sessions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "sessions"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "fe2070b0-6018-40a1-92e6-0920bf020b9a",
+          "name": "2FA Disable Request",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/2fa/disable",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "2fa",
+                "disable"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has success=true\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test(\"Message mentions disabled\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.message.toLowerCase()).to.include(\"disabled\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "7b08558e-ddef-41c0-9fff-eb40061590bb",
+          "name": "2FA Status Request",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/2fa/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "2fa",
+                "status"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"2FA is enabled\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.enabled).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test(\"Has backup codes remaining\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.backupCodesRemaining).to.be.a('number');",
+                  "    pm.expect(json.data.backupCodesRemaining).to.be.at.least(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "8c26f221-ed2c-4b96-a210-dae49095a295",
+          "name": "2FA Enable Request",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/2fa/enable",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "2fa",
+                "enable"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"code\":\"122894\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"2FA is enabled\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.enabled).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test(\"Has 10 backup codes\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.backupCodes).to.be.an('array');",
+                  "    pm.expect(json.data.backupCodes.length).to.eql(10);",
+                  "});",
+                  "",
+                  "pm.test(\"Backup codes format correct\", () => {",
+                  "    const json = pm.response.json();",
+                  "    json.data.backupCodes.forEach(code => {",
+                  "        pm.expect(code).to.match(/^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/);",
+                  "    });",
+                  "});",
+                  "",
+                  "// ⚡ Save backup codes for testing (first 3)",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.backupCodes) {",
+                  "    pm.environment.set(\"backupCode1\", json.data.backupCodes[0]);",
+                  "    pm.environment.set(\"backupCode2\", json.data.backupCodes[1]);",
+                  "    pm.environment.set(\"backupCode3\", json.data.backupCodes[2]);",
+                  "    console.log(\"Backup codes saved (first 3)\");",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "24730272-5260-4817-a437-ff9cd713d759",
+          "name": "2FA Verify Request",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/2fa/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "2fa",
+                "verify"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"tempToken\":\"<tempToken from Test 2>\",\"code\":\"123456\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has success=true\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test(\"Has accessToken\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.accessToken).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"Has refreshToken\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.refreshToken).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"Token type is Bearer\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.tokenType).to.eql(\"Bearer\");",
+                  "});",
+                  "",
+                  "pm.test(\"Password not leaked\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.user.password).to.be.undefined;",
+                  "});",
+                  "",
+                  "// ⚡ AUTO-SAVE tokens after successful 2FA verification",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.accessToken) {",
+                  "    pm.environment.set(\"accessToken\", json.data.accessToken);",
+                  "    pm.environment.set(\"refreshToken\", json.data.refreshToken);",
+                  "    if (json.data.user && json.data.user.id) {",
+                  "        pm.environment.set(\"userId\", json.data.user.id);",
+                  "    }",
+                  "    console.log(\"2FA verified — tokens saved\");",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "fd94a8ee-b098-44f5-b195-a6bdc70a392c",
+          "name": "2FA Setup (Generate Secret + QR)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/2fa/setup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "2fa",
+                "setup"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Has secret\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.secret).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"Has QR code data URI\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.qrCodeDataUri).to.be.a('string');",
+                  "    pm.expect(json.data.qrCodeDataUri).to.include(\"data:image/png;base64,\");",
+                  "});",
+                  "",
+                  "pm.test(\"Has otpAuthUrl\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.otpAuthUrl).to.be.a('string');",
+                  "    pm.expect(json.data.otpAuthUrl).to.include(\"otpauth://\");",
+                  "});",
+                  "",
+                  "// ⚡ Save secret to environment for logging",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.secret) {",
+                  "    pm.environment.set(\"totpSecret\", json.data.secret);",
+                  "    console.log(\"TOTP secret saved to environment\");",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "9aa85181-6e62-45ed-8358-816fade3882d",
+          "name": "Resend Verification",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/resend-verification",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "resend-verification"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"test@example.com\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "9d09e605-c570-401c-8820-50b895a68ecb",
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "reset-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"token\":\"3db2cfbc-5309-4913-9e46-bfff8b37ea62\",\"newPassword\":\"NewPass@456\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "446544a7-3d45-458b-a174-9c1dfc531512",
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/forgot-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "forgot-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"reset1-test@example.com\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "f5eba944-a65e-411a-bf3a-85a9273e74f7",
+          "name": "Verify Email",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/verify-email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "verify-email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"token\":\"<UUID-from-mailtrap>\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "cce4be29-a5c9-4ad7-88e3-102748428a11",
+          "name": "Get My profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiIyMDVlNWQwZi00YjRiLTQ1MmUtYTNiNi1jODIzYzVlN2ZhNGIiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDE2MjI4NCwiZXhwIjoxNzkwMTY1ODg0LCJ0eXBlIjoiYWNjZXNzIiwiZW1haWwiOiJzaGFocnkzQHRlc3QuY29tIiwicm9sZXMiOlsiVVNFUiJdfQ.hiBqqVlA2CVtVSJBOOjPZFJ-WnkcaQNtym93c0sPZFvGRNHxVbi39foHliY1WBndu-CXv3KfwbagKm5viQO4kw",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Email matches\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.email).to.eql(\"shahry3@test.com\");",
+                  "});",
+                  "",
+                  "pm.test(\"Password not leaked\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.password).to.be.undefined;",
+                  "});",
+                  "",
+                  "pm.test(\"Has USER role\", () => {",
+                  "    const json = pm.response.json();",
+                  "    const roles = json.data.roles.map(r => r.roleName);",
+                  "    pm.expect(roles).to.include(\"USER\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "a62fa8b1-1c5d-4949-aca8-523e43d40aca",
+          "name": "Change My Password",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me/change-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "change-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"currentPassword\":\"Test@1234\",\"newPassword\":\"NewTest@5678\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiI3MTkwZjQ3Ny1iMzc2LTQwNTYtYjQ3ZS1kZDI1NjM0MmRkYzEiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDE2OTk1OSwiZXhwIjoxNzkwMTczNTU5LCJ0eXBlIjoiYWNjZXNzIiwiZW1haWwiOiJzaGFocnkzQHRlc3QuY29tIiwicm9sZXMiOlsiVVNFUiIsIkFETUlOIl19.-Tc1x6QCOUZsph3oOrWHeJZ4TTnHSKQ_HScYc9W53B6gvOw7Ft1xghlvX8zbI2qcRV48c-wQDySTT4mfxUuUKA",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Message confirms password change\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.message.toLowerCase()).to.include(\"password\");",
+                  "});",
+                  "",
+                  "pm.test(\"Password not leaked in response\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data).to.be.null;   // ApiResponse.success(\"message\") -> data null",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "501d9588-b5b2-41b3-881c-acd1a47c6eb2",
+          "name": "Update My Profile",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Shahry Updated\",\"image\":\"https://example.com/avatar.png\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzUxMiJ9.eyJqdGkiOiI4MGQ0ZjUyYS01MDk1LTQ2ZGUtYTZlMC03NTQ5NGU2NWI5MTMiLCJzdWIiOiJlYWZhODMxOC00ODFmLTQ2YjYtYmM5Mi04M2E3MTM4MGI3NWUiLCJpc3MiOiJ1bml2ZXJzYWwtYXV0aCIsImlhdCI6MTc5MDE2NzczMCwiZXhwIjoxNzkwMTcxMzMwLCJ0eXBlIjoiYWNjZXNzIiwicm9sZXMiOlsiVVNFUiIsIkFETUlOIl0sImVtYWlsIjoic2hhaHJ5M0B0ZXN0LmNvbSJ9.DT91EPQAwNTgjHfcFeZbL5arUQOc-NJU3v-Sto3TXoFU0of1CdAL3j6AtMFSczN2tw8uSecP71_fq2XVEQ9h_A",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Name updated\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.name).to.eql(\"Shahry Updated\");",
+                  "});",
+                  "",
+                  "pm.test(\"Image updated\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.image).to.eql(\"https://example.com/avatar.png\");",
+                  "});",
+                  "",
+                  "pm.test(\"Email NOT changed\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.email).to.eql(\"shahry3@test.com\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b8adce7e-29af-4299-9b17-81e545ffaff5",
+      "name": "Auth",
+      "item": [
+        {
+          "id": "40a20f4a-8ee4-4d00-9886-4800677fda95",
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"2fa@test.com\",\"password\":\"Test@1234\",\"name\":\"2FA User\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has success=true\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test(\"Password not leaked\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.password).to.be.undefined;",
+                  "});",
+                  "",
+                  "pm.test(\"Has USER role\", () => {",
+                  "    const json = pm.response.json();",
+                  "    const roles = json.data.roles.map(r => r.roleName);",
+                  "    pm.expect(roles).to.include(\"USER\");",
+                  "});",
+                  "",
+                  "// Save userId for later",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.id) {",
+                  "    pm.environment.set(\"userId\", json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "ece9b55b-ba5e-4160-b80e-157fcb2d1465",
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 204\", () => {",
+                  "    pm.response.to.have.status(204);",
+                  "});",
+                  "",
+                  "pm.test(\"Cookie is cleared\", () => {",
+                  "    // Cookie should be cleared (max-age=0)",
+                  "    pm.expect(pm.response.headers.has(\"Set-Cookie\")).to.be.true;",
+                  "});",
+                  "",
+                  "// Clear local tokens",
+                  "pm.environment.unset(\"accessToken\");",
+                  "pm.environment.unset(\"refreshToken\");",
+                  "pm.environment.unset(\"oldAccessToken\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "c4546dfe-ae96-4c5d-9270-a4e158ef76fc",
+          "name": "Refresh token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"2fa@test.com\",\"password\":\"Test@1234\",\"name\":\"2FA User\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Has new accessToken\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.accessToken).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"Has new refreshToken\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.refreshToken).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"New accessToken differs from old\", () => {",
+                  "    const json = pm.response.json();",
+                  "    const oldToken = pm.environment.get(\"accessToken\");",
+                  "    pm.expect(json.data.accessToken).to.not.eql(oldToken);",
+                  "});",
+                  "",
+                  "// Update tokens in environment",
+                  "const json = pm.response.json();",
+                  "if (json.data) {",
+                  "    pm.environment.set(\"oldAccessToken\", pm.environment.get(\"accessToken\"));",
+                  "    pm.environment.set(\"accessToken\", json.data.accessToken);",
+                  "    pm.environment.set(\"refreshToken\", json.data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "743345d2-bf71-4063-9f97-e26f5a7ec1aa",
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"2fa@test.com\",\"password\":\"Test@1234\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has success=true\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test(\"User object present\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.user).to.be.an('object');",
+                  "    pm.expect(json.data.user.email).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"Password not leaked\", () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.user.password).to.be.undefined;",
+                  "});",
+                  "",
+                  "// ═══════════════════════════════════════════════════════════",
+                  "//  LOGIN RESPONSE — 2 SCENARIOS HANDLE KARO",
+                  "// ═══════════════════════════════════════════════════════════",
+                  "",
+                  "pm.test(\"Login flow correct (2FA or normal)\", () => {",
+                  "    const json = pm.response.json();",
+                  "",
+                  "    if (json.data.requiresTwoFactor === true) {",
+                  "        // 2FA required — check tempToken",
+                  "        pm.expect(json.data.tempToken).to.be.a('string').and.not.empty;",
+                  "        pm.expect(json.data.accessToken).to.be.undefined;",
+                  "        pm.expect(json.data.refreshToken).to.be.undefined;",
+                  "    } else {",
+                  "        // Normal login — check tokens",
+                  "        pm.expect(json.data.accessToken).to.be.a('string').and.not.empty;",
+                  "        pm.expect(json.data.refreshToken).to.be.a('string').and.not.empty;",
+                  "        pm.expect(json.data.tokenType).to.eql(\"Bearer\");",
+                  "    }",
+                  "});",
+                  "",
+                  "// ═══════════════════════════════════════════════════════════",
+                  "//  AUTO-SAVE TOKENS — Requestly Syntax",
+                  "// ═══════════════════════════════════════════════════════════",
+                  "",
+                  "const json = pm.response.json();",
+                  "",
+                  "if (json.data) {",
+                  "    // 2FA required — save tempToken",
+                  "    if (json.data.requiresTwoFactor === true && json.data.tempToken) {",
+                  "        pm.environment.set(\"tempToken\", json.data.tempToken);",
+                  "        console.log(\"2FA required — tempToken saved\");",
+                  "    }",
+                  "    // Normal login — save accessToken + refreshToken",
+                  "    else if (json.data.accessToken) {",
+                  "        pm.environment.set(\"accessToken\", json.data.accessToken);",
+                  "        pm.environment.set(\"refreshToken\", json.data.refreshToken);",
+                  "        if (json.data.user && json.data.user.id) {",
+                  "            pm.environment.set(\"userId\", json.data.user.id);",
+                  "        }",
+                  "        console.log(\"Login success — tokens saved\");",
+                  "    }",
+                  "}"
+                ]
+              }
             }
           ]
         }
