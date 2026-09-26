@@ -2,6 +2,8 @@ package com.auth_app_backend.repositories;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.List;
+import java.time.Instant;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -19,5 +21,7 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID
     @Modifying
     @Query("UPDATE RefreshToken rt SET rt.revoked = true WHERE rt.user.id = :userId AND rt.revoked = false")
     int revokeAllByUserId(@Param("userId") UUID userId);
+
+    List<RefreshToken> findByUserIdAndRevokedFalseAndExpiresAtAfter(UUID userId, Instant now);
 
 }

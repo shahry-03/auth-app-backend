@@ -27,6 +27,8 @@ import com.auth_app_backend.dto.request.ResendVerificationRequest;
 import com.auth_app_backend.dto.request.ForgotPasswordRequest;
 import com.auth_app_backend.dto.request.ResetPasswordRequest;
 import com.auth_app_backend.ratelimit.RateLimit;
+import com.auth_app_backend.helper.RequestMetadataExtractor;
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -59,9 +61,15 @@ public class AuthController {
     @RateLimit(name = "login", capacity = 5, refillTokens = 5, refillPeriod = 15)
     public ResponseEntity<ApiResponse<TokenResponse>> login(
             @Valid @RequestBody LoginRequest request,
+            HttpServletRequest httpRequest,
             HttpServletResponse response) {
 
-        TokenResponse tokens = authService.login(request);
+        // Extract IP + User-Agent
+        String ipAddress = RequestMetadataExtractor.extractIp(httpRequest);
+        String userAgent = RequestMetadataExtractor.extractUserAgent(httpRequest);
+
+        TokenResponse tokens = authService.login(request, ipAddress, userAgent);
+
 
         // ⚡ 2FA required — return temp token, no cookie yet
         if (Boolean.TRUE.equals(tokens.requiresTwoFactor())) {

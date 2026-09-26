@@ -44,8 +44,10 @@ public class JwtService {
         this.jwtIssuer = properties.getJwt().getIssuer();
     }
 
-    // Generate JWT token
-    public String generateAccessToken(User user) {
+    // ═══════════════════════════════════════════════════════════
+    //  ACCESS TOKEN — Updated with refreshJti
+    // ═══════════════════════════════════════════════════════════
+    public String generateAccessToken(User user, String refreshJti) {
         Instant now = Instant.now();
         List<String> roles = user.getRoles() == null ? List.of()
                 : user.getRoles().stream()
@@ -57,13 +59,19 @@ public class JwtService {
                 .issuer(jwtIssuer)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusMillis(jwtExpirationInMillis)))
-                .claims(Map.of(
-                        "email", user.getEmail(),
-                        "roles", roles,
-                        "type", "access"))
+                .claim("email", user.getEmail())
+                .claim("roles", roles)
+                .claim("type", "access")
+                .claim("refreshJti", refreshJti != null ? refreshJti : "")   // ← NEW
                 .signWith(secretKey)
                 .compact();
     }
+
+    // ⚡ Backward compat — existing callers ke liye
+    public String generateAccessToken(User user) {
+        return generateAccessToken(user, null);
+    }
+
 
     // generate refresh token
     public String generateRefreshToken(User user, String jti) {
@@ -216,10 +224,19 @@ public class JwtService {
         }
     }
 
-    /**
-     * Extract user ID from any token (access, refresh, or 2fa_temp).
-     * (Already exists as getUserId())
-     */
+    // ═══════════════════════════════════════════════════════════
+    //  HELPER — Extract refreshJti
+    // ═══════════════════════════════════════════════════════════
+
+    public String getRefreshJtiFromToken(String token) {
+        try {
+            Claims claims = parseToken(token).getPayload();
+            String jti = claims.get("refreshJti", String.class);
+            return (jti == null || jti.isBlank()) ? null : jti;
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
 
 }

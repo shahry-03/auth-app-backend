@@ -35,6 +35,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
 
 @WebMvcTest(AuthController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -200,7 +202,7 @@ class AuthControllerTest {
         @Test
         @DisplayName("Should return 200 with tokens on success")
         void shouldReturn200() throws Exception {
-            when(authService.login(any())).thenReturn(tokenResponse);
+            when(authService.login(any(), any(), any())).thenReturn(tokenResponse);
             when(jwtService.getRefreshExpirationInMillis()).thenReturn(604800000L);
 
             String body = """
@@ -228,7 +230,7 @@ class AuthControllerTest {
         @Test
         @DisplayName("Should return 401 on bad credentials")
         void shouldReturn401OnBadCreds() throws Exception {
-            when(authService.login(any()))
+            when(authService.login(any(), any(), any()))
                 .thenThrow(new BadCredentialsException("Invalid email or password"));
 
             String body = """

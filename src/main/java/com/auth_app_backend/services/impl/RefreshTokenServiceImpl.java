@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.UUID;
+import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -23,22 +25,88 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final JwtService jwtService;
 
+
     @Override
     @Transactional
-    public RefreshToken createForUser(User user) {
+    public RefreshToken createForUser(User user, String ipAddress, String userAgent) {
         String jti = UUID.randomUUID().toString();
         long expiryMillis = jwtService.getRefreshExpirationInMillis();
+        Instant now = Instant.now();
 
         RefreshToken token = RefreshToken.builder()
             .jti(jti)
             .user(user)
-            .createdAt(Instant.now())
-            .expiresAt(Instant.now().plusMillis(expiryMillis))
+            .createdAt(now)
+            .expiresAt(now.plusMillis(expiryMillis))
             .revoked(false)
+            .ipAddress(ipAddress)
+            .userAgent(userAgent)
+            .lastUsedAt(now)
             .build();
 
         return refreshTokenRepository.save(token);
     }
+
+    // ─────────────────────────────────────────────
+    //  Keep old method for internal/test use
+    // ─────────────────────────────────────────────
+    @Override
+    @Transactional
+    public RefreshToken createForUser(User user) {
+        return createForUser(user, null, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RefreshToken> getActiveSessionsForUser(UUID userId) {
+        Instant now = Instant.now();
+        return refreshTokenRepository.findByUserIdAndRevokedFalseAndExpiresAtAfter(userId, now);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<RefreshToken> getSessionForUser(UUID sessionId, UUID userId) {
+        return refreshTokenRepository.findById(sessionId)
+            .filter(rt -> rt.getUser().getId().equals(userId));
+    }
+
+    @Override
+    @Transactional
+    public void revokeSession(RefreshToken session) {
+        session.setRevoked(true);
+        refreshTokenRepository.save(session);
+        log.info("Session revoked: jti={} user={}", session.getJti(), session.getUser().getId());
+    }
+
+    @Override
+    @Transactional
+    public int revokeAllExcept(UUID userId, String currentJti) {
+        List<RefreshToken> active = getActiveSessionsForUser(userId);
+        int count = 0;
+
+        for (RefreshToken token : active) {
+            if (!token.getJti().equals(currentJti)) {
+                token.setRevoked(true);
+                refreshTokenRepository.save(token);
+                count++;
+            }
+        }
+
+        log.info("Revoked {} other sessions for user: {}", count, userId);
+        return count;
+    }
+
+    @Override
+    @Transactional
+    public void touchSession(RefreshToken token) {
+        token.setLastUsedAt(Instant.now());
+        refreshTokenRepository.save(token);
+    }
+
+
+
+
+    
 
     @Override
     @Transactional(readOnly = true)

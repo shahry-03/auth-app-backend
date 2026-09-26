@@ -52,4 +52,24 @@ public class RefreshToken {
 
     private String replacedByToken;
 
+
+    @Column(name = "ip_address", length = 45)
+    private String ipAddress;
+
+    @Column(name = "user_agent", length = 500)
+    private String userAgent;
+
+    @Column(name = "last_used_at")
+    private Instant lastUsedAt;
+
+
+    /**
+     * Check if token is currently active (not revoked, not expired).
+     */
+    public boolean isActive() {
+        return !revoked 
+            && expiresAt != null 
+            && Instant.now().isBefore(expiresAt);
+    }
+
 }

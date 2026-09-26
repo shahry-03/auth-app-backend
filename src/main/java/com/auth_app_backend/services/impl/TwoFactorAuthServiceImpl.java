@@ -197,8 +197,8 @@ public class TwoFactorAuthServiceImpl implements TwoFactorAuthService {
         }
 
         // 4. Issue tokens
-        RefreshToken refreshToken = refreshTokenService.createForUser(user);
-        String accessToken = jwtService.generateAccessToken(user);
+        RefreshToken refreshToken = refreshTokenService.createForUser(user, null, null);
+        String accessToken = jwtService.generateAccessToken(user, refreshToken.getJti()); 
         String refreshTokenValue = jwtService.generateRefreshToken(user, refreshToken.getJti());
 
         log.info("2FA login complete for user: {}", user.getId());

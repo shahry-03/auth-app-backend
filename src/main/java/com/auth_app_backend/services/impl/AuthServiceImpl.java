@@ -100,9 +100,9 @@ public class AuthServiceImpl implements AuthService {
     // ============================================================
     @Override
     @Transactional
-    public TokenResponse login(LoginRequest request) {
+    public TokenResponse login(LoginRequest request, String ipAddress, String userAgent) {
 
-        // 1. ⚡ Load user + CHECK ACCOUNT LOCK (before anything else)
+        // 1. ⚡ Load user + CHECK String ipAddress, String userAgentACCOUNT LOCK (before anything else)
         User user = userRepository.findByEmail(request.email())
             .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
 
@@ -145,11 +145,12 @@ public class AuthServiceImpl implements AuthService {
             return TokenResponse.requiresTwoFactor(tempToken);
         }
 
-        // 7. Create refresh token (persisted with jti)
-        RefreshToken refreshToken = refreshTokenService.createForUser(user);
+        // 7. ⚡ Create refresh token WITH metadata
+        RefreshToken refreshToken = refreshTokenService.createForUser(user, ipAddress, userAgent);
 
-        // 8. Generate JWT access + refresh tokens
-        String accessToken = jwtService.generateAccessToken(user);
+        // 8. GeneratTokenResponse login(LoginRequest request);e JWT access + refresh tokens
+        // ⚡ Pass refresh token's jti so access token knows its session
+        String accessToken = jwtService.generateAccessToken(user, refreshToken.getJti());
         String refreshTokenValue = jwtService.generateRefreshToken(user, refreshToken.getJti());
 
         // 9. Build response
@@ -176,7 +177,7 @@ public class AuthServiceImpl implements AuthService {
         User user = newToken.getUser();
 
         // 3. Generate new JWTs
-        String newAccessToken = jwtService.generateAccessToken(user);
+        String newAccessToken = jwtService.generateAccessToken(user, newToken.getJti());
         String newRefreshTokenValue = jwtService.generateRefreshToken(user, newToken.getJti());
 
         return TokenResponse.of(
@@ -291,6 +292,5 @@ public class AuthServiceImpl implements AuthService {
 
         log.info("Password reset successful for: {}", user.getEmail());
     }
-
 
 }

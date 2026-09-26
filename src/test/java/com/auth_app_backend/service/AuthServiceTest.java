@@ -211,7 +211,7 @@ class AuthServiceTest {
             when(jwtService.generateRefreshToken(testUser, "jti-123")).thenReturn("refresh-token-abc");
             when(jwtService.getJwtExpirationInMillis()).thenReturn(3600000L);
 
-            TokenResponse result = authService.login(req);
+            TokenResponse result = authService.login(req, null, null);
 
             assertThat(result.accessToken()).isEqualTo("access-token-xyz");
             assertThat(result.refreshToken()).isEqualTo("refresh-token-abc");
@@ -228,7 +228,7 @@ class AuthServiceTest {
             when(authenticationManager.authenticate(any()))
                 .thenThrow(new BadCredentialsException("Bad creds"));
 
-            assertThatThrownBy(() -> authService.login(req))
+            assertThatThrownBy(() -> authService.login(req, null, null))
                 .isInstanceOf(BadCredentialsException.class)
                 .hasMessageContaining("Invalid email or password");
 
@@ -244,7 +244,7 @@ class AuthServiceTest {
             when(authenticationManager.authenticate(any())).thenReturn(null);
             when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
 
-            assertThatThrownBy(() -> authService.login(req))
+            assertThatThrownBy(() -> authService.login(req, null, null))
                 .isInstanceOf(EmailNotVerifiedException.class)
                 .hasMessageContaining("verify your email");
 
@@ -261,7 +261,7 @@ class AuthServiceTest {
             when(authenticationManager.authenticate(any())).thenReturn(null);
             when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
 
-            assertThatThrownBy(() -> authService.login(req))
+            assertThatThrownBy(() -> authService.login(req, null, null))
                 .isInstanceOf(DisabledException.class)
                 .hasMessageContaining("disabled");
 
@@ -276,7 +276,7 @@ class AuthServiceTest {
             when(authenticationManager.authenticate(any())).thenReturn(null);
             when(userRepository.findByEmail("ghost@example.com")).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> authService.login(req))
+            assertThatThrownBy(() -> authService.login(req, null, null))
                 .isInstanceOf(BadCredentialsException.class);
         }
     }
