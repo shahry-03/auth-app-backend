@@ -1,0 +1,26 @@
+# ============================================================
+#  wfc-auth.yml — CATS Authentication Configuration
+#  Project: auth-app-backend
+#  Login endpoint: POST /api/auth/login
+#  Token response field: accessToken (adjust if different)
+# ============================================================
+
+auth:
+  - name: jwt-bearer
+    loginEndpointAuth: {}
+    authTemplate:
+      loginEndpointAuth:
+        endpoint: /api/auth/login
+        verb: POST
+        contentType: application/json
+        payloadUserPwd:
+          usernameField: email
+          username: testuser@example.com        # ← apna test user
+          passwordField: password
+          password: Test@123456                  # ← apna test password
+        token:
+          extractFrom: body
+          extractSelector: /accessToken          # ← aapke JSON response ka field
+          sendIn: header
+          sendName: Authorization
+          sendTemplate: Bearer {token}

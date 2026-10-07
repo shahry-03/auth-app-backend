@@ -42,3 +42,6 @@ src/main/resources/application-prod.yaml
 .env
 .env.*
 !.env.example
+
+# Uploaded files
+uploads/

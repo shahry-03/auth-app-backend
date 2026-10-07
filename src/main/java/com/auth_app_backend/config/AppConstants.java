@@ -16,6 +16,9 @@ public class AppConstants {
         // Dev-only test endpoints
         "/dev/email/**",
 
+            // Uploaded static files (images)
+        "/uploads/**",                         
+
         // API docs
         "/v3/api-docs/**",
         "/swagger-ui.html",

@@ -1,6 +1,8 @@
 package com.auth_app_backend.config;
+
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.context.annotation.Bean;
@@ -11,21 +13,18 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-// import org.springframework.security.core.userdetails.User;
-// import org.springframework.security.core.userdetails.User.UserBuilder;
-// import org.springframework.security.core.userdetails.UserDetails;
-// import org.springframework.security.core.userdetails.UserDetailsService;
-// import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.auth_app_backend.security.JwtAuthenticationFilter;
 
-// import tools.jackson.databind.ObjectMapper; // for spring boot version 4.x
-import com.fasterxml.jackson.databind.ObjectMapper; // for spring boot version 3.x
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Configuration
 @EnableMethodSecurity(prePostEnabled = true)
@@ -64,7 +63,6 @@ public class SecurityConfig {
                                 .logout(AbstractHttpConfigurer::disable)
                                 .exceptionHandling(ex -> ex
                                                 .authenticationEntryPoint((request, response, authException) -> {
-                                                        // Error Message
                                                         authException.printStackTrace();
                                                         response.setStatus(401);
                                                         response.setContentType("application/json");
@@ -99,28 +97,30 @@ public class SecurityConfig {
                 return configuration.getAuthenticationManager();
         }
 
-        // @Bean
-        // public UserDetailsService users() {
-        // // Implement your user details service here
-        // UserBuilder users = User.withDefaultPasswordEncoder();
-        // UserDetails user1 = users
-        // .username("shahry")
-        // .password("abc")
-        // .roles("USER")
-        // .build();
+        // ============================================================
+        //  CORS Configuration — NEW
+        // ============================================================
+        @Bean
+        public CorsConfigurationSource corsConfigurationSource() {
+                CorsConfiguration config = new CorsConfiguration();
 
-        // UserDetails user2 = users
-        // .username("rizwan")
-        // .password("abc")
-        // .roles("USER")
-        // .build();
+                config.setAllowedOrigins(List.of(
+                                "http://localhost:3000",
+                                "http://localhost:3001"));
 
-        // UserDetails user3 = users
-        // .username("yahya")
-        // .password("abc")
-        // .roles("USER")
-        // .build();
-        // return new InMemoryUserDetailsManager(user1, user2, user3);
-        // }
+                config.setAllowedMethods(List.of(
+                                "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 
+                config.setAllowedHeaders(List.of("*"));
+
+                config.setAllowCredentials(true);
+
+                config.setExposedHeaders(List.of("Authorization"));
+
+                config.setMaxAge(3600L);
+
+                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+                source.registerCorsConfiguration("/**", config);
+                return source;
+        }
 }
